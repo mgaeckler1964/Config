@@ -34,6 +34,11 @@
 // --------------------------------------------------------------------- //
 
 #include "assoc.h"
+
+#include <memory>
+
+#include <winlib/registry.h>
+
 #include "filetype.h"
 
 // --------------------------------------------------------------------- //
@@ -58,36 +63,36 @@ using namespace winlib;
 // ----- class definitions --------------------------------------------- //
 // --------------------------------------------------------------------- //
 
-class FILE_TYPE : public ListObject
+class FileType : public ListObject
 {
-	STRING	identifier;
-	STRING	commandLine;
-	STRING	printCommand;
+	STRING	m_identifier;
+	STRING	m_commandLine;
+	STRING	m_printCommand;
+	bool	m_publicKey;
 
-	void loadFileType( void );
+	void loadFileType();
 
 	public:
-	FILE_TYPE( const STRING &value )
+	FileType( const STRING &value, bool publicKey ) : m_identifier( value ), m_publicKey(publicKey)
 	{
-		identifier = value;
 		loadFileType();
 	}
 
-	bool isValidAssociation( void ) const
+	bool isValidAssociation() const
 	{
-		return commandLine[0U] ? TRUE : FALSE;
+		return m_commandLine.isEmpty() ? false : true;
 	}
-	STRING getCommandLine( void ) const
+	const STRING &getCommandLine() const
 	{
-		return commandLine;
+		return m_commandLine;
 	}
-	STRING getPrintCommand( void ) const
+	const STRING &getPrintCommand() const
 	{
-		return printCommand;
+		return m_printCommand;
 	}
-	STRING getIdentifier( void ) const
+	const STRING &getIdentifier() const
 	{
-		return identifier;
+		return m_identifier;
 	}
 };
 
@@ -95,67 +100,50 @@ class FILE_TYPE : public ListObject
 // ----- class privates ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-void FILE_TYPE::loadFileType( void )
+void FileType::loadFileType()
 {
-	long	size;
-	char	tmpBuff[1024];
+	RegistryClassesRoot	rootKey(m_publicKey);
+	STRING				value;
 
-	STRING	value;
-	STRING	key;
-
-	size = sizeof( tmpBuff );
-	*tmpBuff = 0;
-	RegQueryValue( HKEY_CLASSES_ROOT, identifier, tmpBuff, &size );
-	if( size > 0 && *tmpBuff )
-		value = tmpBuff;
-	else
-		value = identifier;
-
+	rootKey.readValue( m_identifier, &value );
+	if( value.isEmpty() )
+		value = m_identifier;
 	setValue( value );
 
-	key = identifier;
+	STRING key = m_identifier;
 	key += "\\shell\\open\\command";
-	size = sizeof( tmpBuff );
-	*tmpBuff = 0;
-	RegQueryValue( HKEY_CLASSES_ROOT, key, tmpBuff, &size );
-	if( size > 0 && *tmpBuff )
-		commandLine = tmpBuff;
+	if( rootKey.readValue( key, &value ) == rsOK && !value.isEmpty() )
+		m_commandLine = value;
 
-	key = identifier;
+	key = m_identifier;
 	key += "\\shell\\print\\command";
-	size = sizeof( tmpBuff );
-	*tmpBuff = 0;
-	RegQueryValue( HKEY_CLASSES_ROOT, key, tmpBuff, &size );
-	if( size > 0 && *tmpBuff )
-		printCommand = tmpBuff;
+	if( rootKey.readValue( key, &value ) == rsOK && !value.isEmpty() )
+		m_printCommand = value;
 }
 
 // --------------------------------------------------------------------- //
 // ----- class virtuals ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-ProcessStatus AssociationsConfig::handleCreate( void )
+ProcessStatus AssociationsConfig::handleCreate()
 {
-	char	typeBuffer[1024];
-	STRING	fileType;
-	DWORD	i;
+	RegistryClassesRoot	rootKey(m_publicKey);
 
 	fileTypeBox.initHandle( this, IDL_FILETYPES );
-	data.setControl( &fileTypeBox );
+	m_data.setControl( &fileTypeBox );
 
-	i = 0;
-	while( RegEnumKey( HKEY_CLASSES_ROOT, i++, typeBuffer, sizeof( typeBuffer ) ) == ERROR_SUCCESS )
+	for( 
+		Registry::key_iterator it = rootKey.kbegin(), endIT = rootKey.kend();
+		it != endIT;
+		++it
+	)
 	{
-		if( *typeBuffer && *typeBuffer != '.' )
+		const STRING &key = *it;
+		if( !key.isEmpty() && *key.c_str() != '.' )
 		{
-			FILE_TYPE	*tmp;
-
-			fileType = typeBuffer;
-			tmp = new FILE_TYPE( fileType );
-			if( tmp->isValidAssociation() )
-				data.addEntry( tmp );
-			else
-				delete tmp;
+			std::auto_ptr<FileType>	theFileType( new FileType( key, m_publicKey ) );
+			if( theFileType->isValidAssociation() )
+				m_data.addEntry( theFileType.release() );
 		}
 	}
 
@@ -166,18 +154,15 @@ ProcessStatus AssociationsConfig::handleCommand( int cmd )
 {
 	if( cmd == IDL_FILETYPES )
 	{
-		FILE_TYPE	*tmp;
-
-		tmp = (FILE_TYPE*)data.getSelectedEntry();
+		FileType	*tmp = static_cast<FileType*>(m_data.getSelectedEntry());
 		if( tmp )
 		{
-			STRING	commandLine = tmp->getCommandLine();
-			STRING	commandLabel = STRING("Open with: ") + commandLine;
-
+			const STRING	&commandLine = tmp->getCommandLine();
+			STRING			commandLabel = STRING("Open with: ") + commandLine;
 			setStaticText( IDS_OPEN_WITH, commandLabel );
 
-			commandLine = tmp->getPrintCommand();
-			commandLabel = STRING("Print with: ") + commandLine;
+			const STRING	&printCommand = tmp->getPrintCommand();
+			commandLabel = STRING("Print with: ") + printCommand;
 
 			setStaticText( IDS_PRINT_WITH, commandLabel );
 		}
@@ -189,12 +174,10 @@ ProcessStatus AssociationsConfig::handleCommand( int cmd )
 	}
 	else if( cmd == FILETYPE_DIALOG )
 	{
-		FILE_TYPE	*tmp;
-		tmp = (FILE_TYPE*)data.getSelectedEntry();
+		FileType	*tmp = static_cast<FileType*>(m_data.getSelectedEntry());
 		if( tmp )
 		{
-			STRING	identifier = tmp->getIdentifier();
-			FileTypeDialog	dialog( identifier );
+			FileTypeDialog	dialog( tmp->getIdentifier(), m_publicKey );
 			dialog.create( this );
 		}
 	}

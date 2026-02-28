@@ -69,12 +69,12 @@ using namespace winlib;
 
 class ConfigDialog : public ApplicationDialog
 {
-	virtual ProcessStatus handleCreate( void );
-	virtual ProcessStatus handleOk( void );
+	virtual ProcessStatus handleCreate();
+	virtual ProcessStatus handleOk();
 	virtual ProcessStatus handleCommand( int cmd );
 
 	public:
-	void create( void )
+	void create()
 	{
 		ApplicationDialog::create( CONFIG_DIALOG );
 	}

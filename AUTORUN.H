@@ -72,18 +72,18 @@ class AutorunDialog : public ModalDialog
 
 	Label				commandLine;
 
-	HKEY				rootKey;
+	bool				m_publicKey;
 
-	void loadAutoRunData( BOOL enabled, ListboxContainer &data );
+	void loadAutoRunData( bool enabled, ListboxContainer &data );
 
-	virtual ProcessStatus handleCreate( void );
-	virtual ProcessStatus handleOk( void );
+	virtual ProcessStatus handleCreate();
+	virtual ProcessStatus handleOk();
 	virtual ProcessStatus handleCommand( int cmd );
+	virtual ProcessStatus handleSelectionChange( int cmd );
 
 	public:
-	AutorunDialog( HKEY theRoot )
+	AutorunDialog( bool publicKey ) : m_publicKey(publicKey)
 	{
-		rootKey = theRoot;
 	}
 	void create( const BasicWindow *parent )
 	{

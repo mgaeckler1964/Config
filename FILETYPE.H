@@ -62,20 +62,21 @@ using namespace winlib;
 
 class FileTypeDialog : public ModalDialog
 {
-	STRING	identifier;
+	STRING	m_identifier;				// the key name in classes root (..\Software\Classes)
+	bool	m_publicKey;
 
-	ListBox				commandList;
+	ListBox				commandList;	// the list of command in <identifier>\shell...
 	ListboxContainer	commandData;
-	ListBox				extensionList;
+
+	ListBox				extensionList;	// the extensions (..\Software\Classes\.ext) associated with this file type
 	ListboxContainer	extensionData;
 
-	virtual ProcessStatus handleCreate( void );
+	virtual ProcessStatus handleCreate();
 	virtual ProcessStatus handleCommand( int cmd );
 
 	public:
-	FileTypeDialog( const STRING &type )
+	FileTypeDialog( const STRING &type, bool publicKey ) : m_identifier(type), m_publicKey(publicKey)
 	{
-		identifier = type;
 	}
 	void create( const BasicWindow *parent )
 	{

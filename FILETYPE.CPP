@@ -34,6 +34,11 @@
 // --------------------------------------------------------------------- //
 
 #include "filetype.h"
+
+#include <memory>
+
+#include <winlib/registry.h>
+
 #include "command.h"
 
 #include "config.h"
@@ -55,31 +60,28 @@
 #endif
 
 using namespace winlib;
+using namespace gak;
 
 // --------------------------------------------------------------------- //
 // ----- class privates ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-class FILE_EXTENSION : public ListObject
+class FileExtension : public ListObject
 {
-	STRING	extension;
-	STRING	newFileName;
+	STRING	m_extension;
+	STRING	m_newFileName;
 
-	void loadExtension( void );
+	void loadExtension();
 
 	public:
-	FILE_EXTENSION()
+	FileExtension()	{}
+	FileExtension( const STRING &extension ) : ListObject( extension ), m_extension(extension)
 	{
-		extension = "";
-	}
-	FILE_EXTENSION( const STRING &extension ) : ListObject( extension )
-	{
-		this->extension = extension;
 		loadExtension();
 	}
 	void setExtension( const STRING &extension )
 	{
-		this->extension = extension;
+		m_extension = extension;
 		setValue( extension );
 	}
 };
@@ -88,9 +90,9 @@ class FILE_EXTENSION : public ListObject
 // ----- class privates ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-void FILE_EXTENSION::loadExtension( void )
+void FileExtension::loadExtension()
 {
-	newFileName = "";
+	m_newFileName.release();
 }
 
 // --------------------------------------------------------------------- //
@@ -102,17 +104,13 @@ void FILE_EXTENSION::loadExtension( void )
 		FileTypeDialog
 ---------------------------------------------------------------------------
 */
-ProcessStatus FileTypeDialog::handleCreate( void )
+ProcessStatus FileTypeDialog::handleCreate()
 {
-	HKEY	handle;
-	char	commandBuffer[1024];
-	char	extensionBuffer[32];
-	char	typeBuffer[1024];
+	RegistryClassesRoot	rootKey(m_publicKey);
+	Registry			handle;
+	
 	STRING	commandType;
-	STRING	extension;
-	DWORD	i;
-	long	size;
-	STRING	key;
+	STRING	extension, type;
 
 	commandList.initHandle( this, IDL_COMMANDS );
 	commandData.setControl( &commandList );
@@ -120,41 +118,45 @@ ProcessStatus FileTypeDialog::handleCreate( void )
 	extensionList.initHandle( this, IDL_EXTENSIONS );
 	extensionData.setControl( &extensionList );
 
-	key = identifier;
-	key += "\\shell";
-
-	setEditText( IDE_FILE_IDENTIFIER, identifier );
-	if( identifier[0U] )
+	setEditText( IDE_FILE_IDENTIFIER, m_identifier );
+	if( !m_identifier.isEmpty() )
 		disableText( IDE_FILE_IDENTIFIER );
 
-	if( RegOpenKey( HKEY_CLASSES_ROOT, key, &handle ) == ERROR_SUCCESS )
+	/*
+		find the commands (open, print, ...) that belong to the current file file
+	*/
+	STRING key = m_identifier + "\\shell";
+
+	if( handle.openSubkey( rootKey, key ) == ERROR_SUCCESS )
 	{
-		i = 0;
-		while( RegEnumKey( handle, i++, commandBuffer, sizeof( commandBuffer ) ) == ERROR_SUCCESS )
+		for(
+			Registry::key_iterator it = handle.kbegin(), endIT = handle.kend();
+			it != endIT;
+			++it
+		)
 		{
-			commandType = commandBuffer;
-			commandData.addEntry( new FILE_COMMAND( identifier, commandType ) );
+			commandType = *it;
+			commandData.addEntry( new FileCommand( m_identifier, commandType, m_publicKey ) );
 		}
-		RegCloseKey( handle );
 	}
 
-	i = 0;
-	while( RegEnumKey( HKEY_CLASSES_ROOT, i++, extensionBuffer, sizeof( extensionBuffer ) ) == ERROR_SUCCESS )
+	/*
+		find the extensions that are associated with current file file
+	*/
+	for(
+		Registry::key_iterator it = rootKey.kbegin(), endIT = rootKey.kend();
+		it != endIT;
+		++it
+	)
 	{
-		if( *extensionBuffer == '.' )
+		extension = *it;
+		if( extension[0U] == '.' )		// the keys under classes root that begin with a dot are file extensions
+										// their values contains the name of the file type
 		{
-			*typeBuffer = 0;
-			size = sizeof( typeBuffer );
-			RegQueryValue( HKEY_CLASSES_ROOT, extensionBuffer, typeBuffer, &size );
-			if( size > 0
-			&&	*typeBuffer
-			&&	!strcmp( typeBuffer, identifier ) )
+			rootKey.readValue( extension, &type );
+			if( type == m_identifier )
 			{
-				FILE_EXTENSION	*tmp;
-
-				extension = extensionBuffer;
-				tmp = new FILE_EXTENSION( extension );
-				extensionData.addEntry( tmp );
+				extensionData.addEntry( new FileExtension( extension ) );
 			}
 		}
 	}
@@ -166,7 +168,7 @@ ProcessStatus FileTypeDialog::handleCommand( int cmd )
 {
 	if( cmd == COMMANDLINE_DIALOG )
 	{
-		FILE_COMMAND	*command = (FILE_COMMAND*)commandData.getSelectedEntry();
+		FileCommand	*command = (FileCommand*)commandData.getSelectedEntry();
 		if( command )
 		{
 			CommandDialog	dialog( command );
@@ -180,18 +182,16 @@ ProcessStatus FileTypeDialog::handleCommand( int cmd )
 	}
 	else if( cmd == IDPB_CREATE_COMMAND )
 	{
-		FILE_COMMAND *command = new FILE_COMMAND( identifier );
-		if( command )
+		std::auto_ptr<FileCommand>  command( new FileCommand( m_identifier, m_publicKey ) );
+		if( command.get() )
 		{
-			CommandDialog	dialog( command );
+			CommandDialog	dialog( command .get());
 			if( dialog.create( this ) == IDOK )
 			{
 				command->setValue();
-				commandData.addEntry( command );
-				command->saveCommand();
+				commandData.addEntry( command.get() );
+				command.release()->saveCommand();
 			}
-			else
-				delete command;
 		}
 	}
 	else

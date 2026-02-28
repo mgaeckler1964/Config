@@ -59,109 +59,108 @@ using namespace winlib;
 // ----- class definitions --------------------------------------------- //
 // --------------------------------------------------------------------- //
 
-class FILE_COMMAND : public ListObject
+class FileCommand : public ListObject
 {
-	STRING	fileType;
-	STRING	identifier;
-	STRING	menuText;
-	STRING	commandLine;
-	STRING	ddeCommand;
-	STRING	ddeIfRunning;
-	STRING	application;
-	STRING	topic;
+	STRING	m_fileType;			// the file type ...\Software\classes\<type>
+	STRING	m_identifier;		// the key name ...\Software\classes\<type>\shell\<key>
+	STRING	m_menuText;			// the value of the key item or if empty the key name itself
+	STRING	m_commandLine;
+	STRING	m_ddeCommand;
+	STRING	m_ddeIfRunning;
+	STRING	m_application;
+	STRING	m_topic;
+	bool	m_publicKey;
 
-	void loadCommand( void );
+	void loadCommand();
 
 	public:
-	void saveCommand( void );
-	FILE_COMMAND( const STRING &type, const STRING &command )
+	void saveCommand();
+	FileCommand( const STRING &type, const STRING &command, bool publicKey ) 
+		: m_fileType(type), m_identifier(command), m_publicKey(publicKey)
 	{
-		fileType = type;
-		identifier = command;
 		loadCommand();
 	}
-	FILE_COMMAND( const STRING &type )
+	FileCommand( const STRING &type, bool publicKey ) : m_fileType(type), m_publicKey(publicKey)
 	{
-		fileType = type;
 	}
-	STRING getIdentifier( void ) const
+	const STRING &getIdentifier() const
 	{
-		return identifier;
+		return m_identifier;
 	}
-	STRING getMenuText( void ) const
+	const STRING &getMenuText() const
 	{
-		return menuText;
+		return m_menuText;
 	}
-	STRING getCommandLine( void ) const
+	const STRING &getCommandLine() const
 	{
-		return commandLine;
+		return m_commandLine;
 	}
-	STRING getDDEcommand( void ) const
+	const STRING &getDDEcommand() const
 	{
-		return ddeCommand;
+		return m_ddeCommand;
 	}
-	STRING getDDErunCommand( void ) const
+	const STRING &getDDErunCommand() const
 	{
-		return ddeIfRunning;
+		return m_ddeIfRunning;
 	}
-	STRING getApplication( void ) const
+	const STRING &getApplication() const
 	{
-		return application;
+		return m_application;
 	}
-	STRING getTopic( void ) const
+	const STRING &getTopic() const
 	{
-		return topic;
+		return m_topic;
 	}
 
 	void setIdentifier( const STRING &newValue )
 	{
-		identifier = newValue;
+		m_identifier = newValue;
 	}
 	void setMenuText( const STRING &newValue )
 	{
-		menuText = newValue;
+		m_menuText = newValue;
 	}
 	void setCommandLine( const STRING &newValue )
 	{
-		commandLine = newValue;
+		m_commandLine = newValue;
 	}
 	void setDDEcommand( const STRING &newValue )
 	{
-		ddeCommand = newValue;
+		m_ddeCommand = newValue;
 	}
 	void setDDErunCommand( const STRING &newValue )
 	{
-		ddeIfRunning = newValue;
+		m_ddeIfRunning = newValue;
 	}
 	void setApplication( const STRING &newValue )
 	{
-		application = newValue;
+		m_application = newValue;
 	}
 	void setTopic( const STRING &newValue )
 	{
-		topic = newValue;
+		m_topic = newValue;
 	}
-	void setValue( void )
+	void setValue()
 	{
-		if( menuText[0U] )
-			ListObject::setValue( menuText );
+		if( !m_menuText.isEmpty() )
+			ListObject::setValue( m_menuText );
 		else
-			ListObject::setValue( identifier );
+			ListObject::setValue( m_identifier );
 	}
 };
 
 class CommandDialog : public ModalDialog
 {
-	FILE_COMMAND	*command;
+	FileCommand	*m_command;		// open, print ...
 
-	virtual ProcessStatus handleCreate( void );
-	virtual ProcessStatus handleOk( void );
+	virtual ProcessStatus handleCreate();
+	virtual ProcessStatus handleOk();
 	virtual ProcessStatus handleCommand( int cmd );
 
 	public:
-	CommandDialog( FILE_COMMAND *newCommand )
+	CommandDialog( FileCommand *newCommand )
 	{
-		command = newCommand;
+		m_command = newCommand;
 	}
 	int create( const BasicWindow *parent )
 	{

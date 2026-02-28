@@ -1,19 +1,38 @@
 /*
 		Project:		CONFIG
-		Module:			Config.rc
-		Description:	Dialog definitions
+		Module:			CONFIG.RC
+		Description:	The dialog definitions
 		Author:			Martin Gäckler
-		Address:		Ringtr. 29, D-86919 Utting
-		Phone:			0049 - 8806 - 9 54 64
-		Telefax:		0049 - 8806 - 9 54 65
-		Date:			09. 09. 1993
-		History:
-*/
+		Address:		Hofmannsthalweg 14, A-4030 Linz
+		Web:			https://www.gaeckler.at/
 
+		Copyright:		(c) 1988-2026 Martin Gäckler
+
+		This program is free software: you can redistribute it and/or modify  
+		it under the terms of the GNU General Public License as published by  
+		the Free Software Foundation, version 3.
+
+		You should have received a copy of the GNU General Public License 
+		along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+		THIS SOFTWARE IS PROVIDED BY Martin Gäckler, Linz, Austria ``AS IS''
+		AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+		TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+		PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR
+		CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+		SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+		LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+		USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+		ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+		OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+		OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+		SUCH DAMAGE.
+*/
 
 /* --------------------------------------------------------------------- */
 /* ----- includes ------------------------------------------------------ */
 /* --------------------------------------------------------------------- */
+
 #include <windows.h>
 
 #include "config.h"
@@ -37,13 +56,14 @@ FONT 8, "MS Sans Serif"
  CONTROL "Wait for NT Autoexec.bat", IDC_WAIT_AUTO, "button", BS_AUTOCHECKBOX | BS_NOTIFY | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 4, 17, 100, 12
  CONTROL "Explorer Wiederherstellen", IDC_PERSIST_BROWSER, "button", BS_AUTOCHECKBOX | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 124, 4, 96, 13
  CONTROL "Frame1", -1, "static", SS_ETCHEDFRAME | WS_CHILD | WS_VISIBLE, 4, 34, 396, 1
- CONTROL "OK", IDOK, "BUTTON", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 408, 5, 60, 14
+ CONTROL "OK", IDOK, "BUTTON", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_DISABLED, 408, 5, 60, 14
  CONTROL "Cancel", IDCANCEL, "BUTTON", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 408, 24, 60, 14
  CONTROL "Global...", GLOBAL_CONFIG, "BUTTON", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 408, 45, 60, 14
  CONTROL "Win Auto Run...", AUTORUN_DIALOG, "button", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 408, 64, 60, 14
  CONTROL "NT Auto Load...", NT_AUTO_LOAD, "button", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 408, 84, 60, 14
  CONTROL "NT Auto Run...", NT_AUTO_RUN, "button", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 408, 100, 60, 14
- CONTROL "Explorer Reset", IDC_EXPLORER_RESET, "button", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 408, 116, 60, 13
+ CONTROL "Explorer Reset", IDC_EXPLORER_RESET, "button", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 408, 116, 60, 14
+ CONTROL "Extensions", ASSOCIATION_DIALOG, "button", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 408, 132, 60, 14
  CONTROL "Desktop:", -1, "static", SS_LEFT | WS_CHILD | WS_VISIBLE, 4, 42, 36, 8
  CONTROL "", IDC_DESKTOP, "edit", ES_LEFT | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP, 60, 40, 288, 12
  CONTROL "Browse...", IDC_DESK_BROWSE, "button", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 352, 40, 50, 12
@@ -111,7 +131,7 @@ FONT 8, "MS Sans Serif"
  CONTROL "Logon Wallpaper:", -1, "static", SS_LEFT | WS_CHILD | WS_VISIBLE, 8, 9, 60, 8
  CONTROL "", IDE_WALLPAPER, "edit", ES_LEFT | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP, 84, 9, 176, 12
  CONTROL "Browse...", IDPB_BROWSE_WALL, "button", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 264, 9, 50, 14
- CONTROL "OK", IDOK, "BUTTON", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 328, 9, 50, 14
+ CONTROL "OK", IDOK, "BUTTON", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_DISABLED, 328, 9, 50, 14
  CONTROL "Tile Wallpaper", IDC_TILE_WALL, "button", BS_AUTOCHECKBOX | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 8, 26, 60, 12
  CONTROL "Cancel", IDCANCEL, "BUTTON", BS_PUSHBUTTON | BS_CENTER | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 328, 26, 50, 14
  CONTROL "Logon Screensaver:", -1, "static", SS_LEFT | WS_CHILD | WS_VISIBLE, 8, 47, 68, 8
@@ -328,11 +348,3 @@ FILETYPE VFT_APP
  }
 
 }
-
-
-
-
-
-
-
-

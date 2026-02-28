@@ -69,25 +69,22 @@ using namespace winlib;
 
 class DirectoryDialog : public ModalDialog
 {
-	char	directory[10240];
-	char	tmpDir[10240];
+	STRING	m_directory;
 
-	virtual ProcessStatus handleCreate( void );
-	virtual ProcessStatus handleCommand( int cmd );
+	virtual ProcessStatus handleCreate();
+	virtual ProcessStatus handleSelectionChange( int control );
 
 	public:
-	DirectoryDialog( const char *newDir )
-	{
-		strcpy( directory, newDir );
-	}
+	DirectoryDialog( const STRING &newDir ) : m_directory(newDir) {}
+
 	int create( const BasicWindow *parent )
 	{
 		return ModalDialog::create( DIRECTORY_DIALOG, parent );
 	}
 
-	const char *getDirectory( void ) const
+	const STRING &getDirectory() const
 	{
-		return directory;
+		return m_directory;
 	}
 
 };

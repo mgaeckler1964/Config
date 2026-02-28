@@ -34,9 +34,12 @@
 // --------------------------------------------------------------------- //
 
 #include <gak/fcopy.h>
+#include <gak/fmtNumber.h>
+#include <gak/numericString.h>
 
 #include <winlib/stddlg.h>
 #include <winlib/regedit.h>
+#include <winlib/registry.h>
 
 #include "global.h"
 
@@ -98,68 +101,38 @@ static size_t replaceEnvironment( char valueBuff[], const char *env )
 // ----- class virtuals ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-ProcessStatus GlobalConfig::handleCreate( void )
+ProcessStatus GlobalConfig::handleCreate()
 {
 	long		openResult;
-	HKEY		desktopKey;
-	HKEY		explorerKey;
-	HKEY		debuggerKey;
-	HKEY		internetKey;
-	DWORD		valueType;
-	DWORD		valueSize;
-	char		valueBuff[256];
+	Registry	desktopKey;
+	Registry	explorerKey;
+	Registry	debuggerKey;
+	Registry	internetKey;
+	STRING		valueBuff;
 
-	openResult = RegOpenKeyEx(	HKEY_USERS,
-								".default\\Control Panel\\Desktop", 0,
-								KEY_READ, &desktopKey );
+	openResult = desktopKey.openUsers( ".default\\Control Panel\\Desktop" );
 	if( openResult == ERROR_SUCCESS )
 	{
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( desktopKey, "Wallpaper", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueType == REG_SZ )
+		if( desktopKey.readValue( "Wallpaper", &valueBuff ) == rsOK )
 			setEditText( IDE_WALLPAPER, valueBuff );
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( desktopKey, "TileWallpaper", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( desktopKey.readValue( "TileWallpaper", &valueBuff ) == rsOK )
 		{
-			if( *valueBuff == '0' )
+			if( valueBuff[0U] == '0' )
 				clrButtonCheck( IDC_TILE_WALL );
 			else
 				setButtonCheck( IDC_TILE_WALL );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( desktopKey, "SCRNSAVE.EXE", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-
-		if( openResult == ERROR_SUCCESS
-		&&  valueType == REG_SZ )
+		if( desktopKey.readValue( "SCRNSAVE.EXE", &valueBuff ) == rsOK )
 			setEditText( IDE_SCREEN_SAVER, valueBuff );
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( desktopKey, "ScreenSaveTimeOut", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-
-		if( openResult == ERROR_SUCCESS
-		&&  valueType == REG_SZ )
+		if( desktopKey.readValue( "ScreenSaveTimeOut", &valueBuff ) == rsOK && !valueBuff.isEmpty())
 		{
-			int		timeOut = atoi( valueBuff ) / 60;
-
-			itoa( timeOut, valueBuff, 10 );
+			int		timeOut = valueBuff.getValueN<int>() / 60;
+			valueBuff = gak::formatNumber(timeOut);
 			setEditText( IDE_SAVER_TIMEOUT, valueBuff );
 		}
-
-		RegCloseKey( desktopKey );
 	}
 
 	askCheckBox.initHandle( this, IDC_ASK_CHECK );
@@ -168,18 +141,10 @@ ProcessStatus GlobalConfig::handleCreate( void )
 	for( size_t i=0; i<arraySize( debuggerList ); ++i )
 		debuggerCombo.addEntry( debuggerList[i].title );
 
-	openResult = RegOpenKeyEx(	HKEY_LOCAL_MACHINE,
-								"Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", 0,
-								KEY_READ, &debuggerKey );
+	openResult = debuggerKey.openPublic( "Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug" );
 	if( openResult == ERROR_SUCCESS )
 	{
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( debuggerKey, "Debugger", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( debuggerKey.readValue( "Debugger", &valueBuff ) == rsOK )
 		{
 			bool	found = false;
 			for( int i=0; i<arraySize( debuggerList ); ++i )
@@ -195,155 +160,81 @@ ProcessStatus GlobalConfig::handleCreate( void )
 		else
 			debuggerCombo.selectEntry(arraySize( debuggerList )-1);
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( debuggerKey, "Auto", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( debuggerKey.readValue( "Auto", &valueBuff ) == rsOK )
 		{
-			if( valueBuff[0] == '0' )
+			if( valueBuff[0U] == '0' )
 				askCheckBox.setActive();
 			else
 				askCheckBox.clrActive();
 		}
-
-		RegCloseKey( debuggerKey );
 	}
 	else
 		debuggerCombo.selectEntry(arraySize( debuggerList )-1);
 
-	openResult = RegOpenKeyEx(	HKEY_LOCAL_MACHINE,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders", 0,
-								KEY_READ, &explorerKey );
+	openResult = explorerKey.openPublic( "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders" );
 	if( openResult == ERROR_SUCCESS )
 	{
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Common Desktop", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Common Desktop", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DESKTOP, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Common Favorites", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Common Favorites", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_FAVORITES, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Common Start Menu", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Common Start Menu", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_COMMON_START, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Common Programs", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Common Programs", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_COMMON_PROG, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Common Startup", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Common Startup", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_COMMON_AUTO, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Common Administrative Tools", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Common Administrative", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_ADMIN_MENU, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Common Documents", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Common Documents", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DOCUMENTS, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Common Templates", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Common Templates", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_TEMPLATES, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Common AppData", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Common AppData", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_APP_FILES, valueBuff );
 		}
-
-		RegCloseKey( explorerKey );
 	}
 
-	openResult = RegOpenKeyEx(	HKEY_LOCAL_MACHINE,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings", 0,
-								KEY_READ, &internetKey );
+	openResult = debuggerKey.openPublic( "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" );
 	if( openResult == ERROR_SUCCESS )
 	{
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( internetKey, "ActiveXCache", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( internetKey.readValue( "ActiveXCache", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DOWNLOAD, valueBuff );
 		}
 
-		RegCloseKey( internetKey );
 	}
 	return psDO_DEFAULT;
 }
 
-ProcessStatus GlobalConfig::handleOk( void )
+ProcessStatus GlobalConfig::handleOk()
 {
+#if 0											// actually disabled
 	long		openResult;
 	HKEY		desktopKey,
 				backgroundKey,
@@ -389,12 +280,12 @@ ProcessStatus GlobalConfig::handleOk( void )
 		RegSetValueEx( desktopKey, "ScreenSaveTimeOut", 0,
 						REG_SZ, (LPBYTE)valueBuff, valueSize );
 
-		RegCloseKey( desktopKey );
+		_RegCloseKey( desktopKey );
 	}
 
 
 	openResult = RegOpenKeyEx(
-		HKEY_LOCAL_MACHINE,
+		_HKEY_LOCAL_MACHINE,
 		"Software\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\Background",
 		0, KEY_SET_VALUE, &backgroundKey
 	);
@@ -424,11 +315,11 @@ ProcessStatus GlobalConfig::handleOk( void )
 
 		doLogValue( openResult );
 
-		RegCloseKey( backgroundKey );
+		_RegCloseKey( backgroundKey );
 	}
 
 
-	openResult = RegOpenKeyEx(	HKEY_LOCAL_MACHINE,
+	openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
 								"Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", 0,
 								KEY_SET_VALUE, &debuggerKey );
 	if( openResult == ERROR_SUCCESS )
@@ -456,15 +347,15 @@ ProcessStatus GlobalConfig::handleOk( void )
 		);
 
 
-		RegCloseKey( debuggerKey );
+		_RegCloseKey( debuggerKey );
 	}
 
-	openResult = RegOpenKeyEx(	HKEY_LOCAL_MACHINE,
+	openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
 								"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders", 0,
 								KEY_SET_VALUE, &explorerKey1 );
 	if( openResult == ERROR_SUCCESS )
 	{
-		openResult = RegOpenKeyEx(	HKEY_LOCAL_MACHINE,
+		openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
 								"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders", 0,
 								KEY_SET_VALUE, &explorerKey2 );
 		if( openResult == ERROR_SUCCESS )
@@ -578,12 +469,12 @@ ProcessStatus GlobalConfig::handleOk( void )
 			RegSetValueEx( explorerKey2, "Common AppData", 0,
 							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
 
-			RegCloseKey( explorerKey2 );
+			_RegCloseKey( explorerKey2 );
 		}
-		RegCloseKey( explorerKey1 );
+		_RegCloseKey( explorerKey1 );
 	}
 
-	openResult = RegOpenKeyEx(	HKEY_LOCAL_MACHINE,
+	openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
 								"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings", 0,
 								KEY_SET_VALUE, &internetKey );
 	if( openResult == ERROR_SUCCESS )
@@ -593,10 +484,10 @@ ProcessStatus GlobalConfig::handleOk( void )
 		RegSetValueEx( internetKey, "ActiveXCache", 0,
 						REG_SZ, (LPBYTE)valueBuff, valueSize );
 
-		RegCloseKey( internetKey );
+		_RegCloseKey( internetKey );
 	}
 
-	openResult = RegOpenKeyEx(	HKEY_LOCAL_MACHINE,
+	openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
 								"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ActiveX Cache", 0,
 								KEY_SET_VALUE, &internetKey );
 	if( openResult == ERROR_SUCCESS )
@@ -610,9 +501,9 @@ ProcessStatus GlobalConfig::handleOk( void )
 		RegDeleteValue( internetKey, "3" );
 		RegDeleteValue( internetKey, "4" );
 
-		RegCloseKey( internetKey );
+		_RegCloseKey( internetKey );
 	}
-
+#endif
 	return psDO_DEFAULT;
 }
 
@@ -624,7 +515,7 @@ ProcessStatus GlobalConfig::handleCommand( int cmd )
 	{
 		case AUTORUN_DIALOG:
 		{
-			AutorunDialog	dialog( HKEY_LOCAL_MACHINE );
+			AutorunDialog	dialog( true );
 
 			dialog.create( this );
 /*v*/		break;
@@ -640,7 +531,6 @@ ProcessStatus GlobalConfig::handleCommand( int cmd )
 				fileName = dialog.getFilename();
 				setEditText( IDE_WALLPAPER, fileName );
 			}
-
 /*v*/		break;
 		}
 		case IDPB_BROWSE_SAVER:
@@ -763,7 +653,7 @@ ProcessStatus GlobalConfig::handleCommand( int cmd )
 		}
 		case ASSOCIATION_DIALOG:
 		{
-			AssociationsConfig	dialog;
+			AssociationsConfig	dialog(true);
 
 			dialog.create( this );
 /*v*/		break;

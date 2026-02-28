@@ -35,6 +35,8 @@
 
 #include "autorun.h"
 
+#include <WINLIB/registry.h>
+
 #include "config.h"
 
 // --------------------------------------------------------------------- //
@@ -55,16 +57,15 @@
 
 using namespace winlib;
 
-class AUTORUN_COMMAND : public ListObject
+struct AutorunCommand : public ListObject
 {
 	public:
 	STRING	commandLine;
-	BOOL	enabled;
+	bool	enabled;
 
-	AUTORUN_COMMAND( const STRING &title, const STRING &commandLine, BOOL enabled ) : ListObject( title )
+	AutorunCommand( const STRING &title, const STRING &commandLine, bool enabled ) : 
+		ListObject( title ), commandLine(commandLine), enabled(enabled)
 	{
-		this->commandLine = commandLine;
-		this->enabled = enabled;
 	}
 
 };
@@ -73,38 +74,29 @@ class AUTORUN_COMMAND : public ListObject
 // ----- class privates ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-void AutorunDialog::loadAutoRunData( BOOL enabled, ListboxContainer &data )
+void AutorunDialog::loadAutoRunData( bool enabled, ListboxContainer &data )
 {
-	HKEY			runKey;
-	LONG			result;
-	DWORD			valueSize, dataSize, type;
-
-	DWORD			i;
-	char			valueName[1024];
-	char			regData[1024];
-	AUTORUN_COMMAND	*cmd;
+	Registry		runKey;
 
 	STRING	theKeyPath = "Software\\Microsoft\\Windows\\CurrentVersion\\";
 
 	theKeyPath += enabled ? "Run" : "DisabledRun";
 
-	result = RegOpenKey( rootKey, theKeyPath, &runKey );
+	long result = runKey.openKey( m_publicKey, theKeyPath );
 	if( result == ERROR_SUCCESS )
 	{
-		i = 0;
-		while( 1 )
+		for( 
+			Registry::value_iterator it = runKey.vbegin(), endIT = runKey.vend();
+			it != endIT;
+			++it
+		)
 		{
-			valueSize = sizeof( valueName );
-			dataSize  = sizeof( regData );
-
-			if( RegEnumValue( runKey, i++, valueName, &valueSize, NULL, &type, (LPBYTE)regData, &dataSize ) != ERROR_SUCCESS )
-				break;
-
-			cmd = new AUTORUN_COMMAND( valueName, regData, enabled );
-			data.addEntry( cmd );
+			if( it->type == rtSTRING )
+			{
+				AutorunCommand	*cmd = new AutorunCommand( it->valueName, it->valueBuffer, enabled );
+				data.addEntry( cmd );
+			}
 		}
-
-		RegCloseKey( runKey );
 	}
 }
 
@@ -113,7 +105,7 @@ void AutorunDialog::loadAutoRunData( BOOL enabled, ListboxContainer &data )
 // ----- class virtuals ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-ProcessStatus AutorunDialog::handleCreate( void )
+ProcessStatus AutorunDialog::handleCreate()
 {
 	enabledBox.initHandle( this, IDC_ENABLED_LIST );
 	enabledData.setControl( &enabledBox );
@@ -130,45 +122,33 @@ ProcessStatus AutorunDialog::handleCreate( void )
 	return psDO_DEFAULT;
 }
 
-ProcessStatus AutorunDialog::handleOk( void )
+ProcessStatus AutorunDialog::handleOk()
 {
-	HKEY			enabledRun;
-	HKEY			disabledRun;
+	Registry		enabledRun;
+	Registry		disabledRun;
 
-	LONG			result;
+	long			result;
 
-	size_t			i;
-	AUTORUN_COMMAND	*cmd;
-
-	result = RegCreateKey( rootKey,
-		"Software\\Microsoft\\Windows\\CurrentVersion\\Run", &enabledRun );
+	result = enabledRun.createKey( m_publicKey, "Software\\Microsoft\\Windows\\CurrentVersion\\Run" );
 	if( result == ERROR_SUCCESS )
 	{
-		result = RegCreateKey( rootKey,
-			"Software\\Microsoft\\Windows\\CurrentVersion\\DisabledRun", &disabledRun );
+		result = disabledRun.createKey( m_publicKey, "Software\\Microsoft\\Windows\\CurrentVersion\\DisabledRun" );
 		if( result == ERROR_SUCCESS )
 		{
-			i = disabledData.size();
+			size_t i = disabledData.size();
 			while( i>0 )
 			{
 				i--;
-				cmd = static_cast<AUTORUN_COMMAND *>(disabledData[i]);
+				AutorunCommand	*cmd = static_cast<AutorunCommand *>(disabledData[i]);
 				if( cmd->enabled )
 				{
 					STRING	valueName = *cmd;
 
 					// delete from enabled list
-					RegDeleteValue( enabledRun, valueName );
+					enabledRun.deleteValue( valueName );
 
 					// add to disabled list
-					RegSetValueEx(
-						disabledRun,
-						valueName,
-						0,
-						REG_SZ,
-						(LPBYTE)((const char *)cmd->commandLine),
-						DWORD(cmd->commandLine.strlen())
-					);
+					disabledRun.writeValue( valueName, cmd->commandLine );
 				}
 			}
 
@@ -176,44 +156,61 @@ ProcessStatus AutorunDialog::handleOk( void )
 			while( i>0 )
 			{
 				i--;
-				cmd = static_cast<AUTORUN_COMMAND *>(enabledData[i]);
+				AutorunCommand *cmd = static_cast<AutorunCommand *>(enabledData[i]);
 				if( !cmd->enabled )
 				{
 					STRING	valueName = *cmd;
 
 					// delete from disabled list
-					RegDeleteValue( disabledRun, valueName );
+					disabledRun.deleteValue( valueName );
 
 					// add to enabled list
-					RegSetValueEx(
-						enabledRun,
-						valueName,
-						0,
-						REG_SZ,
-						(LPBYTE)((const char *)cmd->commandLine),
-						DWORD(cmd->commandLine.strlen())
-					);
+					enabledRun.writeValue( valueName, cmd->commandLine );
 				}
 			}
-
-
-			RegCloseKey( disabledRun );
 		}
-
-		RegCloseKey( enabledRun );
 	}
 
 	return psDO_DEFAULT;
 }
 
+ProcessStatus AutorunDialog::handleSelectionChange( int cmd )
+{
+	AutorunCommand	*runCommand;
+
+	switch( cmd )
+	{
+		case IDC_ENABLED_LIST:
+			runCommand = static_cast<AutorunCommand *>(enabledData.getSelectedEntry());
+			if( runCommand )
+			{
+				commandLine.setText( runCommand->commandLine );
+			}
+			break;
+
+		case IDC_DISABLED_LIST:
+			runCommand = static_cast<AutorunCommand *>(disabledData.getSelectedEntry());
+			if( runCommand )
+			{
+				commandLine.setText( runCommand->commandLine );
+			}
+			break;
+
+		default:
+			return ModalDialog::handleSelectionChange( cmd );
+	}
+
+	return psPROCESSED;
+}
+
 ProcessStatus AutorunDialog::handleCommand( int cmd )
 {
-	AUTORUN_COMMAND		*runCommand;
+	AutorunCommand		*runCommand;
 
 	switch( cmd )
 	{
 		case IDC_ENABLE:
-			runCommand = (AUTORUN_COMMAND *)disabledData.getSelectedEntry();
+			runCommand = static_cast<AutorunCommand *>(disabledData.getSelectedEntry());
 			if( runCommand )
 			{
 				disabledData.removeEntry(runCommand);
@@ -222,27 +219,11 @@ ProcessStatus AutorunDialog::handleCommand( int cmd )
 			break;
 
 		case IDC_DISABLE:
-			runCommand = (AUTORUN_COMMAND *)enabledData.getSelectedEntry();
+			runCommand = static_cast<AutorunCommand *>(enabledData.getSelectedEntry());
 			if( runCommand )
 			{
 				enabledData.removeEntry(runCommand);
 				disabledData.addEntry(runCommand);
-			}
-			break;
-
-		case IDC_ENABLED_LIST:
-			runCommand = (AUTORUN_COMMAND *)enabledData.getSelectedEntry();
-			if( runCommand )
-			{
-				commandLine.setText( runCommand->commandLine );
-			}
-			break;
-
-		case IDC_DISABLED_LIST:
-			runCommand = (AUTORUN_COMMAND *)disabledData.getSelectedEntry();
-			if( runCommand )
-			{
-				commandLine.setText( runCommand->commandLine );
 			}
 			break;
 

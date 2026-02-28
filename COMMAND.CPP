@@ -63,103 +63,94 @@ using namespace winlib;
 // ----- class privates ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-void FILE_COMMAND::loadCommand( void )
+void FileCommand::loadCommand()
 {
-	long	size;
-	char	tmpBuff[1024];
+	STRING				tmpStr;
 
-	STRING	value;
-	STRING	key;
-	STRING	tmpKey;
+	STRING				value;
+	STRING				key;
+	STRING				tmpKey;
+	RegistryClassesRoot	rootKey(m_publicKey);
 
-	size = sizeof( tmpBuff );
-	key = fileType;
+	key = m_fileType;
 	key += "\\shell\\";
-	key += identifier;
+	key += m_identifier;
 
-	*tmpBuff = 0;
-	RegQueryValue( HKEY_CLASSES_ROOT, key, tmpBuff, &size );
-	if( size > 0 && *tmpBuff )
+	rootKey.readValue( key, &tmpStr );
+	if( !tmpStr.isEmpty() )
 	{
-		value = tmpBuff;
-		menuText = value;
+		value = tmpStr;
+		m_menuText = value;
 	}
 	else
 	{
-		value = identifier;
-		menuText = "";
+		value = m_identifier;
+		m_menuText.release();
 	}
 
 	ListObject::setValue( value );
 
 	tmpKey = key;
 	tmpKey += "\\command";
-	size = sizeof( tmpBuff );
-	*tmpBuff = 0;
-	RegQueryValue( HKEY_CLASSES_ROOT, tmpKey, tmpBuff, &size );
-	if( size > 0 && *tmpBuff )
-		commandLine = tmpBuff;
+	rootKey.readValue( tmpKey, &tmpStr );
+	if( !tmpStr.isEmpty() )
+		m_commandLine = tmpStr;
 
 	tmpKey = key;
 	tmpKey += "\\ddeexec";
-	size = sizeof( tmpBuff );
-	*tmpBuff = 0;
-	RegQueryValue( HKEY_CLASSES_ROOT, tmpKey, tmpBuff, &size );
-	if( size > 0 && *tmpBuff )
-		ddeCommand = tmpBuff;
+	rootKey.readValue( tmpKey, &tmpStr );
+	if( !tmpStr.isEmpty() )
+		m_ddeCommand = tmpStr;
 
 	key = tmpKey;
 	tmpKey += "\\application";
-	*tmpBuff = 0;
-	RegQueryValue( HKEY_CLASSES_ROOT, tmpKey, tmpBuff, &size );
-	if( size > 0 && *tmpBuff )
-		application = tmpBuff;
+	rootKey.readValue( tmpKey, &tmpStr );
+	if( !tmpStr.isEmpty() )
+		m_application = tmpStr;
 
 	tmpKey = key;
 	tmpKey += "\\ifexec";
-	*tmpBuff = 0;
-	RegQueryValue( HKEY_CLASSES_ROOT, tmpKey, tmpBuff, &size );
-	if( size > 0 && *tmpBuff )
-		ddeIfRunning = tmpBuff;
+	rootKey.readValue( tmpKey, &tmpStr );
+	if( !tmpStr.isEmpty() )
+		m_ddeIfRunning = tmpStr;
 
 	tmpKey = key;
 	tmpKey += "\\topic";
-	*tmpBuff = 0;
-	RegQueryValue( HKEY_CLASSES_ROOT, tmpKey, tmpBuff, &size );
-	if( size > 0 && *tmpBuff )
-		topic = tmpBuff;
+	rootKey.readValue( tmpKey, &tmpStr );
+	if( !tmpStr.isEmpty() )
+		m_topic = tmpStr;
 }
 
 // --------------------------------------------------------------------- //
 // ----- class virtuals ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-ProcessStatus CommandDialog::handleCreate( void )
+ProcessStatus CommandDialog::handleCreate()
 {
-	setEditText( IDE_COMMANDLINE, command->getCommandLine() );
-	setEditText( IDE_DDE_COMMAND, command->getDDEcommand() );
-	setEditText( IDE_DDE_IFEXEC, command->getDDErunCommand() );
-	setEditText( IDE_APPLICATION, command->getApplication() );
-	setEditText( IDE_TOPIC, command->getTopic() );
-	setEditText( IDC_CMD_MENUTEXT, command->getMenuText() );
+	setEditText( IDE_COMMANDLINE, m_command->getCommandLine() );
+	setEditText( IDE_DDE_COMMAND, m_command->getDDEcommand() );
+	setEditText( IDE_DDE_IFEXEC, m_command->getDDErunCommand() );
+	setEditText( IDE_APPLICATION, m_command->getApplication() );
+	setEditText( IDE_TOPIC, m_command->getTopic() );
+	setEditText( IDC_CMD_MENUTEXT, m_command->getMenuText() );
 
-	STRING identifier = command->getIdentifier();
+	STRING identifier = m_command->getIdentifier();
 	setEditText( IDE_CMD_IDENTIFIER, identifier );
-	if( identifier[0U] )
+	if( !identifier.isEmpty() )
 		disableText( IDE_CMD_IDENTIFIER );
 
 	return psDO_DEFAULT;
 }
 
-ProcessStatus CommandDialog::handleOk( void )
+ProcessStatus CommandDialog::handleOk()
 {
-	command->setCommandLine( getEditText( IDE_COMMANDLINE ) );
-	command->setDDEcommand( getEditText( IDE_DDE_COMMAND) );
-	command->setDDErunCommand( getEditText( IDE_DDE_IFEXEC) );
-	command->setApplication( getEditText( IDE_APPLICATION) );
-	command->setTopic( getEditText( IDE_TOPIC ) );
-	command->setIdentifier( getEditText( IDE_CMD_IDENTIFIER ) );
-	command->setMenuText( getEditText( IDC_CMD_MENUTEXT ) );
+	m_command->setCommandLine( getEditText( IDE_COMMANDLINE ) );
+	m_command->setDDEcommand( getEditText( IDE_DDE_COMMAND) );
+	m_command->setDDErunCommand( getEditText( IDE_DDE_IFEXEC) );
+	m_command->setApplication( getEditText( IDE_APPLICATION) );
+	m_command->setTopic( getEditText( IDE_TOPIC ) );
+	m_command->setIdentifier( getEditText( IDE_CMD_IDENTIFIER ) );
+	m_command->setMenuText( getEditText( IDC_CMD_MENUTEXT ) );
 
 	return psDO_DEFAULT;
 }
@@ -188,7 +179,7 @@ ProcessStatus CommandDialog::handleCommand( int cmd )
 // ----- class publics ------------------------------------------------- //
 // --------------------------------------------------------------------- //
 
-void FILE_COMMAND::saveCommand( void )
+void FileCommand::saveCommand()
 {
 }
 

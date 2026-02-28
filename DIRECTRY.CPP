@@ -54,23 +54,26 @@
 
 using namespace winlib;
 
+static size_t const DIR_BUFFER_SIZE = 10240;
+
 // --------------------------------------------------------------------- //
 // ----- class virtuals ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-ProcessStatus DirectoryDialog::handleCreate( void )
+ProcessStatus DirectoryDialog::handleCreate()
 {
-	strcpy( tmpDir, directory );
+	char	tmpDir[DIR_BUFFER_SIZE];
+	strcpy( tmpDir, m_directory );
 	DlgDirList(	handle(), tmpDir,
 				IDC_DIRECTORY_LIST, IDC_CUR_DIRECTORY,
-				DDL_DRIVES|DDL_DIRECTORY|DDL_HIDDEN|DDL_SYSTEM );
+				DDL_DRIVES|DDL_DIRECTORY );
 
 	return psDO_DEFAULT;
 }
 
-ProcessStatus DirectoryDialog::handleCommand( int cmd )
+ProcessStatus DirectoryDialog::handleSelectionChange( int cmd )
 {
-	char	dirBuffer[1024];
+	char	dirBuffer[DIR_BUFFER_SIZE];
 
 	if( cmd == IDC_DIRECTORY_LIST )
 	{
@@ -79,17 +82,17 @@ ProcessStatus DirectoryDialog::handleCommand( int cmd )
 
 		if( dirBuffer[1] == ':' )	// drive
 		{
-			strcpy( directory, dirBuffer );
-			strcat( directory, "\\" );
+			m_directory = dirBuffer;
+			m_directory.condAppend(DIRECTORY_DELIMITER);
 		}
-		else if( dirBuffer[0] == '.' )	// back
+		else if( !strcmp(dirBuffer, ".." DIRECTORY_DELIMITER_STRING ) )	// up one level
 		{
-			char	*cp = strrchr( directory, '\\' );
-			if( cp )
+			size_t	slashPos = m_directory.searchRChar( DIRECTORY_DELIMITER );
+			if( slashPos != m_directory.no_index )
 			{
-				if( cp <= directory + 3 )
-					cp++;
-				*cp = 0;
+				if( slashPos <= 3 )
+					slashPos++;
+				m_directory.cut(slashPos);
 			}
 		}
 		else if( *dirBuffer )
@@ -98,21 +101,22 @@ ProcessStatus DirectoryDialog::handleCommand( int cmd )
 			if( cp )
 				*cp = 0;
 
-			if( strlen( directory ) > 3 )
-				strcat( directory, "\\" );
-			strcat( directory, dirBuffer );
+			if( !m_directory.isEmpty() )
+				m_directory.condAppend( DIRECTORY_DELIMITER );
+			m_directory += dirBuffer;
 		}
 		if( *dirBuffer )
 		{
-			strcpy( tmpDir, directory );
+			char	tmpDir[DIR_BUFFER_SIZE];
+			strcpy( tmpDir, m_directory );
 			DlgDirList(	handle(), tmpDir,
 						IDC_DIRECTORY_LIST, IDC_CUR_DIRECTORY,
-						DDL_DRIVES|DDL_DIRECTORY|DDL_HIDDEN|DDL_SYSTEM|DDL_EXCLUSIVE );
+						DDL_DRIVES|DDL_DIRECTORY|DDL_EXCLUSIVE );
 		}
 		return psPROCESSED;
 	}
 	else
-		return ModalDialog::handleCommand( cmd );
+		return ModalDialog::handleSelectionChange( cmd );
 }
 
 #ifdef __BORLANDC__

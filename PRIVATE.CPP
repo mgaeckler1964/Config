@@ -33,13 +33,16 @@
 // ----- includes ------------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-#include <winlib\regedit.h>
+#include <memory>
+
+#include <winlib/regedit.h>
+#include <winlib/registry.h>
 
 #include "private.h"
 
 #include "global.h"
 #include "autorun.h"
-
+#include "assoc.h"
 #include "directry.h"
 
 #include "config.h"
@@ -61,332 +64,164 @@
 #endif
 
 using namespace winlib;
+using namespace gak;
 
 // --------------------------------------------------------------------- //
 // ----- class virtuals ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-ProcessStatus ConfigDialog::handleCreate( void )
+ProcessStatus ConfigDialog::handleCreate()
 {
 	long		openResult;
-	HKEY		logonKey;
-	HKEY		explorerKey;
-	DWORD		valueType;
-	DWORD		valueSize;
-	char		valueBuff[1024];
-	DWORD		valueWord;
+	Registry	logonKey;
+	Registry	explorerKey;
+	STRING		valueBuff;
+	long		valueWord;
 
-	openResult = RegOpenKeyEx(	HKEY_CURRENT_USER,
-								"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", 0,
-								KEY_READ, &logonKey );
+	openResult = logonKey.openPrivate( "Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon" );
 	if( openResult == ERROR_SUCCESS )
 	{
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( logonKey, "ParseAutoexec", NULL,
-										&valueType, (LPBYTE)valueBuff, &valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( logonKey.readValue( "ParseAutoexec", &valueBuff ) == rsOK )
 		{
-			if( *valueBuff == '0' )
+			if( valueBuff[0U] == '0' )
 				clrButtonCheck( IDC_PARSE_AUTO );
 			else
 				setButtonCheck( IDC_PARSE_AUTO );
 		}
 
-		valueSize = sizeof( valueWord );
-		valueType = REG_DWORD;
-		openResult = RegQueryValueEx( logonKey, "RunLogonScriptSync", NULL,
-										&valueType, (LPBYTE)&valueWord,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_DWORD )
+		if( logonKey.readValue( "RunLogonScriptSync", &valueWord ) == rsOK )
 		{
 			if( valueWord )
 				setButtonCheck( IDC_WAIT_AUTO );
 			else
 				clrButtonCheck( IDC_WAIT_AUTO );
 		}
-
-		RegCloseKey( logonKey );
 	}
 
 
-	openResult = RegOpenKeyEx(	HKEY_CURRENT_USER,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", 0,
-								KEY_READ, &explorerKey );
+	openResult = explorerKey.openPrivate( "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" );
 	if( openResult == ERROR_SUCCESS )
 	{
-		valueSize = sizeof( valueWord );
-		valueType = REG_DWORD;
-		openResult = RegQueryValueEx( explorerKey, "PersistBrowsers", NULL,
-										&valueType, (LPBYTE)&valueWord,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_DWORD )
+		if( explorerKey.readValue( "PersistBrowsers", &valueWord ) == rsOK )
 		{
 			if( valueWord )
 				setButtonCheck( IDC_PERSIST_BROWSER );
 			else
 				clrButtonCheck( IDC_PERSIST_BROWSER );
 		}
-
-		RegCloseKey( explorerKey );
+		explorerKey.close();
 	}
 
 
-	openResult = RegOpenKeyEx(	HKEY_CURRENT_USER,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\"
-									"Explorer\\Shell Folders", 0,
-								KEY_READ, &explorerKey );
+	openResult = explorerKey.openPrivate( 
+			"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
+	);
 	if( openResult == ERROR_SUCCESS )
 	{
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Desktop", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Desktop", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DESKTOP, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Favorites", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Favorites", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_FAVORITES, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Start Menu", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Start Menu", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_START_MENU, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Programs", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Programs", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_PROGRAM_MENU, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Startup", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Startup", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_AUTO_START, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Administrative Tools", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Administrative Tools", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_ADMIN_MENU, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Recent", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Recent", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_RECENT, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "SendTo", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "SendTo", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_SEND_TO, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Personal", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Personal", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DOCUMENTS, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "My Pictures", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "My Pictures", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_PICTURES, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "My Video", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "My Video", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_VIDEOS, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "My Music", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "My Music", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_MUSIC, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Templates", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Templates", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_TEMPLATES, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "AppData", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "AppData", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_APP_FILES, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "Local Settings", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Local Settings", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_LOCAL_SETTINGS, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( 
-			explorerKey, "Local AppData", NULL,
-			&valueType, (LPBYTE)valueBuff,
-			&valueSize 
-		);
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Local AppData", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_LAPP_FILES, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( 
-			explorerKey, "Cache", NULL,
-			&valueType, (LPBYTE)valueBuff,
-			&valueSize 
-		);
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Cache", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_IE_CACHE, valueBuff );
 		}
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( 
-			explorerKey, "Cookies", NULL,
-			&valueType, (LPBYTE)valueBuff,
-			&valueSize 
-		);
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "Cookies", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_IE_COOKIES, valueBuff );
 		}
 
 
-		valueSize = sizeof( valueBuff );
-		valueType = REG_SZ;
-		openResult = RegQueryValueEx( explorerKey, "History", NULL,
-										&valueType, (LPBYTE)valueBuff,
-										&valueSize );
-		if( openResult == ERROR_SUCCESS
-		&&  valueSize > 0
-		&&  valueType == REG_SZ )
+		if( explorerKey.readValue( "History", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_IE_HISTORY, valueBuff );
 		}
-
-		RegCloseKey( explorerKey );
 	}
 
 	return psDO_DEFAULT;
 }
 
-ProcessStatus ConfigDialog::handleOk( void )
+ProcessStatus ConfigDialog::handleOk()
 {
+#if 0											// actually disabled
+
 	long		openResult;
 	HKEY		logonKey;
 	HKEY		explorerKey1;
@@ -400,7 +235,7 @@ ProcessStatus ConfigDialog::handleOk( void )
 	char	*userProfile = getenv( "USERPROFILE" );
 	size_t	userLen = userProfile ? strlen( userProfile ) : 0;
 
-	openResult = RegOpenKeyEx(	HKEY_CURRENT_USER,
+	openResult = RegOpenKeyEx(	_HKEY_CURRENT_USER,
 								"Software\\Microsoft\\Windows NT\\"
 									"CurrentVersion\\Winlogon", 0,
 								KEY_SET_VALUE, &logonKey );
@@ -424,10 +259,10 @@ ProcessStatus ConfigDialog::handleOk( void )
 		RegSetValueEx( logonKey, "RunLogonScriptSync", 0,
 						REG_DWORD, (LPBYTE)&valueWord, valueSize );
 
-		RegCloseKey( logonKey );
+		_RegCloseKey( logonKey );
 	}
 
-	openResult = RegOpenKeyEx(	HKEY_CURRENT_USER,
+	openResult = RegOpenKeyEx(	_HKEY_CURRENT_USER,
 								"Software\\Microsoft\\Windows\\"
 									"CurrentVersion\\Explorer\\Advanced", 0,
 								KEY_SET_VALUE, &logonKey );
@@ -442,16 +277,16 @@ ProcessStatus ConfigDialog::handleOk( void )
 		RegSetValueEx( logonKey, "PersistBrowsers", 0,
 						REG_DWORD, (LPBYTE)&valueWord, valueSize );
 
-		RegCloseKey( logonKey );
+		_RegCloseKey( logonKey );
 	}
 
-	openResult = RegOpenKeyEx(	HKEY_CURRENT_USER,
+	openResult = RegOpenKeyEx(	_HKEY_CURRENT_USER,
 								"Software\\Microsoft\\Windows\\CurrentVersion\\"
 									"Explorer\\Shell Folders", 0,
 								KEY_SET_VALUE, &explorerKey1 );
 	if( openResult == ERROR_SUCCESS )
 	{
-		openResult = RegOpenKeyEx(	HKEY_CURRENT_USER,
+		openResult = RegOpenKeyEx(	_HKEY_CURRENT_USER,
 								"Software\\Microsoft\\Windows\\CurrentVersion\\"
 									"Explorer\\User Shell Folders", 0,
 								KEY_SET_VALUE, &explorerKey2 );
@@ -742,11 +577,12 @@ ProcessStatus ConfigDialog::handleOk( void )
 			RegSetValueEx( explorerKey2, "History", 0,
 							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
 
-			RegCloseKey( explorerKey2 );
+			_RegCloseKey( explorerKey2 );
 		}
-		RegCloseKey( explorerKey1 );
+		_RegCloseKey( explorerKey1 );
 	}
 
+#endif
 	return psDO_DEFAULT;
 }
 
@@ -765,72 +601,80 @@ ProcessStatus ConfigDialog::handleCommand( int cmd )
 		}
 		case AUTORUN_DIALOG:
 		{
-			AutorunDialog	dialog(HKEY_CURRENT_USER);
+			AutorunDialog	dialog(false);
 
 			dialog.create( this );
 /*v*/		break;
 		}
 		case NT_AUTO_LOAD:
 		{
-			RegistryEditor	*theDialog = new RegistryEditor;
+			std::auto_ptr<RegistryEditor>	theDialog(new RegistryEditor);
 
 			theDialog->create( this, "Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\Load" );
-
-			delete theDialog;
 
 /*v*/		break;
 		}
 		case NT_AUTO_RUN:
 		{
-			RegistryEditor	*theDialog = new RegistryEditor;
+			std::auto_ptr<RegistryEditor>	theDialog(new RegistryEditor);
 
 			theDialog->create( this, "Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\Run" );
-
-			delete theDialog;
 
 /*v*/		break;
 		}
 
 		case IDC_EXPLORER_RESET:
 		{
-			long	errorCode;
-			unsigned long	dummy;
-			HKEY	streams;
-			char	buffer[1024];
-			int		i;
+			long			errorCode;
+			Registry		streams;
+			char			buffer[1024];
 
-			errorCode = RegOpenKey( HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Streams", &streams );
-			i = 0;
-			while( errorCode == ERROR_SUCCESS )
+			errorCode = streams.openPrivate( "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Streams" );
+			if( errorCode == ERROR_SUCCESS )
 			{
-				errorCode = RegEnumKey( streams, i, buffer, sizeof( buffer ) );
-				if( errorCode == ERROR_SUCCESS && isdigit( *buffer ) )
-					errorCode = RegDeleteKey( streams, buffer );
-				else
-					i++;
-			}
-			RegCloseKey( streams );
-			if( errorCode != ERROR_SUCCESS && errorCode != 259 )
-			{
-				FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, errorCode, 0, buffer, sizeof( buffer ), NULL );
-				MessageBox( handle(), buffer, "Fehler", MB_ICONSTOP );
+				for(
+					Registry::key_iterator it = streams.kbegin(), endIT = streams.kend();
+					it != endIT && errorCode == ERROR_SUCCESS;
+					++it
+				)
+				{
+					if( isdigit( (*it)[0U] ) )
+						errorCode = streams.deleteSubkey( *it );
+				}
+				streams.close();
 			}
 
-			errorCode = RegOpenKey( HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StreamMRU", &streams );
-			i = 0;
-			while( errorCode == ERROR_SUCCESS )
-			{
-				dummy = sizeof( buffer );
-				errorCode = RegEnumValue( streams, i, buffer, &dummy, NULL, NULL, NULL, NULL );
-				if( errorCode == ERROR_SUCCESS )
-					errorCode = RegDeleteValue( streams, buffer );
-			}
-			RegCloseKey( streams );
-			if( errorCode != ERROR_SUCCESS && errorCode != 259 )
+			if( errorCode != ERROR_SUCCESS )
 			{
 				FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, errorCode, 0, buffer, sizeof( buffer ), NULL );
-				MessageBox( handle(), buffer, "Fehler", MB_ICONSTOP );
+				messageBox( buffer, "Fehler", MB_ICONSTOP );
 			}
+
+			errorCode = streams.openKey( false, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StreamMRU" );
+			if( errorCode == ERROR_SUCCESS )
+			{
+				for(
+					Registry::key_iterator it = streams.kbegin(), endIT = streams.kend();
+					it != endIT && errorCode == ERROR_SUCCESS;
+					++it
+				)
+				{
+					errorCode = streams.deleteSubkey( *it );
+				}
+			}
+			if( errorCode != ERROR_SUCCESS )
+			{
+				FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, errorCode, 0, buffer, sizeof( buffer ), NULL );
+				messageBox( buffer, "Fehler", MB_ICONSTOP );
+			}
+/*v*/		break;
+		}
+
+		case ASSOCIATION_DIALOG:
+		{
+			AssociationsConfig	dialog(false);
+
+			dialog.create( this );
 /*v*/		break;
 		}
 

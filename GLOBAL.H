@@ -70,8 +70,8 @@ class GlobalConfig : public ModalDialog
 	ComboBox	debuggerCombo;
 	CheckBox	askCheckBox;
 
-	virtual ProcessStatus handleCreate( void );
-	virtual ProcessStatus handleOk( void );
+	virtual ProcessStatus handleCreate();
+	virtual ProcessStatus handleOk();
 	virtual ProcessStatus handleCommand( int cmd );
 
 	public:

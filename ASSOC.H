@@ -65,13 +65,17 @@ using namespace winlib;
 
 class AssociationsConfig : public ModalDialog
 {
-	ListboxContainer	data;
-	ListBox				fileTypeBox;
+	ListBox				fileTypeBox;		// all file types found
+	ListboxContainer	m_data;
 
-	virtual ProcessStatus handleCreate( void );
+	bool				m_publicKey;
+
+	virtual ProcessStatus handleCreate();
 	virtual ProcessStatus handleCommand( int cmd );
 
 	public:
+	AssociationsConfig( bool publicKey ) : m_publicKey(publicKey) {}
+
 	void create( const BasicWindow *parent )
 	{
 		ModalDialog::create( ASSOCIATION_DIALOG, parent );
