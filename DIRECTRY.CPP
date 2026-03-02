@@ -67,7 +67,7 @@ ProcessStatus DirectoryDialog::handleCreate()
 	DlgDirList(	handle(), tmpDir,
 				IDC_DIRECTORY_LIST, IDC_CUR_DIRECTORY,
 				DDL_DRIVES|DDL_DIRECTORY );
-
+	m_directory = getEditText(IDC_CUR_DIRECTORY);
 	return psDO_DEFAULT;
 }
 

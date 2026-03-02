@@ -218,371 +218,97 @@ ProcessStatus ConfigDialog::handleCreate()
 	return psDO_DEFAULT;
 }
 
+#define WriteFolderSetting( editID, regKey )						\
+{																	\
+	valueStr = getEditText( editID );								\
+	explorerKey1.writeValue( regKey, valueStr );					\
+	if( userLen && !valueStr.comparenI( userProfile, userLen ) )	\
+	{																\
+		valueStr.replaceText(0, userLen, "%USERPROFILE%");			\
+	}																\
+	valueEnv = valueStr;											\
+	explorerKey2.writeValue( regKey, valueEnv );					\
+}
+
 ProcessStatus ConfigDialog::handleOk()
 {
-#if 0											// actually disabled
-
 	long		openResult;
-	HKEY		logonKey;
-	HKEY		explorerKey1;
-	HKEY		explorerKey2;
-	DWORD		valueSize;
-	char		valueBuff[1024];
-	DWORD		valueWord;
+	Registry	logonKey;
+	Registry	advKey;
+	STRING		valueStr;
+	EnvSTRING	valueEnv;
+	long		valueWord;
+	Registry	explorerKey1;		// user readable
+	Registry	explorerKey2;		// environment strings (REG_EXPAND_SZ)
 
-	STRING		tmpBuff;
+	/*
+		I'm not sure whether this environment variable is standard or set by my own scripts
+	*/
+	const char	*userProfile = getenv( "USERPROFILE" );
+	size_t		userLen = userProfile ? strlen( userProfile ) : 0;
 
-	char	*userProfile = getenv( "USERPROFILE" );
-	size_t	userLen = userProfile ? strlen( userProfile ) : 0;
-
-	openResult = RegOpenKeyEx(	_HKEY_CURRENT_USER,
-								"Software\\Microsoft\\Windows NT\\"
-									"CurrentVersion\\Winlogon", 0,
-								KEY_SET_VALUE, &logonKey );
+	openResult = logonKey.openPrivate(
+		"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", KEY_SET_VALUE|KEY_WOW64_64KEY 
+	);
 	if( openResult == ERROR_SUCCESS )
 	{
-		if( isButtonChecked( IDC_PARSE_AUTO ) )
-			strcpy( valueBuff, "1" );
-		else
-			strcpy( valueBuff, "0" );
-		valueSize = DWORD(strlen( valueBuff ) + 1);
+		valueStr = isButtonChecked( IDC_PARSE_AUTO ) ? '1' : '0';
+		logonKey.writeValue( "ParseAutoexec", valueStr );
 
-		RegSetValueEx( logonKey, "ParseAutoexec", 0,
-						REG_SZ, (LPBYTE)valueBuff, valueSize );
+		valueWord = isButtonChecked( IDC_WAIT_AUTO ) ? 1 : 0;
+		logonKey.writeValue( "RunLogonScriptSync", valueWord );
 
-		if( isButtonChecked( IDC_WAIT_AUTO ) )
-			valueWord = 1;
-		else
-			valueWord = 0;
-		valueSize = sizeof( valueWord );
-
-		RegSetValueEx( logonKey, "RunLogonScriptSync", 0,
-						REG_DWORD, (LPBYTE)&valueWord, valueSize );
-
-		_RegCloseKey( logonKey );
+		logonKey.close();
 	}
 
-	openResult = RegOpenKeyEx(	_HKEY_CURRENT_USER,
-								"Software\\Microsoft\\Windows\\"
-									"CurrentVersion\\Explorer\\Advanced", 0,
-								KEY_SET_VALUE, &logonKey );
+	openResult = advKey.openPrivate(
+		"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+		KEY_SET_VALUE|KEY_WOW64_64KEY
+	);
 	if( openResult == ERROR_SUCCESS )
 	{
-		if( isButtonChecked( IDC_PERSIST_BROWSER ) )
-			valueWord = 1;
-		else
-			valueWord = 0;
-		valueSize = sizeof( valueWord );
-
-		RegSetValueEx( logonKey, "PersistBrowsers", 0,
-						REG_DWORD, (LPBYTE)&valueWord, valueSize );
-
-		_RegCloseKey( logonKey );
+		valueWord = isButtonChecked( IDC_PERSIST_BROWSER ) ? 1 : 0;
+		advKey.writeValue( "PersistBrowsers", valueWord );
 	}
 
-	openResult = RegOpenKeyEx(	_HKEY_CURRENT_USER,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\"
-									"Explorer\\Shell Folders", 0,
-								KEY_SET_VALUE, &explorerKey1 );
-	if( openResult == ERROR_SUCCESS )
+	gak::int8 ver = getWindowsMajorVersion();
+	if( ver <= 5 )	// windows XP or earlier
 	{
-		openResult = RegOpenKeyEx(	_HKEY_CURRENT_USER,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\"
-									"Explorer\\User Shell Folders", 0,
-								KEY_SET_VALUE, &explorerKey2 );
+		openResult = explorerKey1.openPrivate(
+			"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
+			KEY_SET_VALUE|KEY_WOW64_64KEY 
+		);
 		if( openResult == ERROR_SUCCESS )
 		{
-			getEditText( IDC_DESKTOP, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Desktop", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
+			openResult = explorerKey2.openPrivate(
+				"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders",
+				KEY_SET_VALUE|KEY_WOW64_64KEY 
+			);
+			if( openResult == ERROR_SUCCESS )
 			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
+				WriteFolderSetting(IDC_DESKTOP, "Desktop");
+				WriteFolderSetting(IDC_FAVORITES, "Favorites");
+				WriteFolderSetting(IDC_START_MENU, "Start Menu");
+				WriteFolderSetting(IDC_PROGRAM_MENU, "Programs");
+				WriteFolderSetting(IDC_AUTO_START, "Startup");
+				WriteFolderSetting(IDC_ADMIN_MENU, "Administrative Tools");
+				WriteFolderSetting(IDC_RECENT, "Recent");
+				WriteFolderSetting(IDC_SEND_TO, "SendTo");
+				WriteFolderSetting(IDC_DOCUMENTS, "Personal");
+				WriteFolderSetting(IDC_PICTURES, "My Pictures");
+				WriteFolderSetting(IDC_VIDEOS, "My Video");
+				WriteFolderSetting(IDC_MUSIC, "My Music");
+				WriteFolderSetting(IDC_TEMPLATES, "Templates");
+				WriteFolderSetting(IDC_APP_FILES, "AppData");
+				WriteFolderSetting(IDC_LOCAL_SETTINGS, "Local Settings");
+				WriteFolderSetting(IDC_LAPP_FILES, "Local AppData");
+				WriteFolderSetting(IDC_IE_CACHE, "Cache");
+				WriteFolderSetting(IDC_IE_COOKIES, "Cookies");
+				WriteFolderSetting(IDC_IE_HISTORY, "History");
 			}
-			RegSetValueEx( explorerKey2, "Desktop", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_FAVORITES, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Favorites", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Favorites", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_START_MENU, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Start Menu", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Start Menu", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_PROGRAM_MENU, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Programs", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Programs", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_AUTO_START, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Startup", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Startup", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_ADMIN_MENU, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Administrative Tools", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Administrative Tools", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_RECENT, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Recent", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Recent", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_SEND_TO, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "SendTo", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "SendTo", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_DOCUMENTS, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Personal", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Personal", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_PICTURES, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "My Pictures", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "My Pictures", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_VIDEOS, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "My Video", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "My Video", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_MUSIC, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "My Music", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "My Music", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_TEMPLATES, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Templates", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Templates", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_APP_FILES, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "AppData", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "AppData", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_LOCAL_SETTINGS, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Local Settings", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Local Settings", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_LAPP_FILES, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Local AppData", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Local AppData", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_IE_CACHE, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Cache", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Cache", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_IE_COOKIES, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Cookies", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "Cookies", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_IE_HISTORY, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "History", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			if( userLen && !strncmpi( valueBuff, userProfile, userLen ) )
-			{
-				tmpBuff = "%USERPROFILE%";
-				tmpBuff += valueBuff + userLen;
-				strcpy( valueBuff, tmpBuff );
-				valueSize = DWORD(strlen( valueBuff ) + 1);
-			}
-			RegSetValueEx( explorerKey2, "History", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			_RegCloseKey( explorerKey2 );
 		}
-		_RegCloseKey( explorerKey1 );
 	}
 
-#endif
 	return psDO_DEFAULT;
 }
 
