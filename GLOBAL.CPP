@@ -66,13 +66,32 @@
 using namespace winlib;
 using namespace gak;
 
-/// TODO create more string constants
+// --------------------------------------------------------------------- //
+// ----- constants ----------------------------------------------------- //
+// --------------------------------------------------------------------- //
+
 static const char Wallpaper[] = "Wallpaper";
 static const char TileWallpaper[] = "TileWallpaper";
 static const char SCRNSAVE_EXE[] = "SCRNSAVE.EXE";
 static const char ScreenSaveTimeOut[] = "ScreenSaveTimeOut";
 static const char DebuggerValueName[] = "Debugger";
+static const char Auto[] = "Auto";
+static const char CommonDesktop[] = "Common Desktop";
+static const char CommonFavorites[] = "Common Favorites";
+static const char CommonStartMenu[] = "Common Start Menu";
+static const char CommonPrograms[] = "Common Programs";
+static const char CommonStartup[] = "Common Startup";
+static const char CommonAdministrativeTools[] = "Common Administrative Tools";
+static const char CommonDocuments[] = "Common Documents";
+static const char CommonTemplates[] = "Common Templates";
+static const char CommonAppData[] = "Common AppData";
+static const char ActiveXCache[] = "ActiveXCache";
 
+static const char ShellFoldersKey[] = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders";
+static const char UserShellFoldersKey[] = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders";
+static const char AeDebugKey[] = "Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug";
+static const char InternetSettingsKey[] = "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings";
+static const char ActiveXCacheKey[] = "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ActiveX Cache";
 
 #define NO_DEBUG_CHANGE	"*"
 inline bool canChangeDebugger( const char *val )
@@ -94,6 +113,11 @@ struct Debugger
 	{ "Unknown", NO_DEBUG_CHANGE },
 	{ "NONE", "" }
 };
+
+
+// --------------------------------------------------------------------- //
+// ----- module functions ---------------------------------------------- //
+// --------------------------------------------------------------------- //
 
 static bool replaceEnvironment( STRING &valueStr, const char *env )
 {
@@ -152,7 +176,7 @@ ProcessStatus GlobalConfig::handleCreate()
 	for( size_t i=0; i<arraySize( debuggerList ); ++i )
 		debuggerCombo.addEntry( debuggerList[i].title );
 
-	openResult = debuggerKey.openPublic( "Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug" );
+	openResult = debuggerKey.openPublic( AeDebugKey );
 	if( openResult == ERROR_SUCCESS )
 	{
 		if( debuggerKey.readValue( DebuggerValueName, &valueBuff ) == rsOK )
@@ -171,7 +195,7 @@ ProcessStatus GlobalConfig::handleCreate()
 		else
 			debuggerCombo.selectEntry(arraySize( debuggerList )-1);
 
-		if( debuggerKey.readValue( "Auto", &valueBuff ) == rsOK )
+		if( debuggerKey.readValue( Auto, &valueBuff ) == rsOK )
 		{
 			if( valueBuff[0U] == '0' )
 				askCheckBox.setActive();
@@ -182,59 +206,59 @@ ProcessStatus GlobalConfig::handleCreate()
 	else
 		debuggerCombo.selectEntry(arraySize( debuggerList )-1);
 
-	openResult = explorerKey.openPublic( "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders" );
+	openResult = explorerKey.openPublic( ShellFoldersKey );
 	if( openResult == ERROR_SUCCESS )
 	{
-		if( explorerKey.readValue( "Common Desktop", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( CommonDesktop, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DESKTOP, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Common Favorites", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( CommonFavorites, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_FAVORITES, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Common Start Menu", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( CommonStartMenu, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_COMMON_START, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Common Programs", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( CommonPrograms, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_COMMON_PROG, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Common Startup", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( CommonStartup, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_COMMON_AUTO, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Common Administrative Tools", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( CommonAdministrativeTools, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_ADMIN_MENU, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Common Documents", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( CommonDocuments, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DOCUMENTS, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Common Templates", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( CommonTemplates, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_TEMPLATES, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Common AppData", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( CommonAppData, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_APP_FILES, valueBuff );
 		}
 	}
 
-	openResult = internetKey.openPublic( "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" );
+	openResult = internetKey.openPublic( InternetSettingsKey );
 	if( openResult == ERROR_SUCCESS )
 	{
-		if( internetKey.readValue( "ActiveXCache", &valueBuff ) == rsOK )
+		if( internetKey.readValue( ActiveXCache, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DOWNLOAD, valueBuff );
 		}
@@ -318,10 +342,7 @@ ProcessStatus GlobalConfig::handleOk()
 	}
 
 	Registry	debuggerKey;
-	openResult = debuggerKey.openPublic(
-		"Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug",
-		KEY_SET_VALUE|KEY_WOW64_64KEY
-	);
+	openResult = debuggerKey.openPublic( AeDebugKey, KEY_SET_VALUE|KEY_WOW64_64KEY );
 	if( openResult == ERROR_SUCCESS )
 	{
 		int selectedDebugger = debuggerCombo.getSelection();
@@ -336,7 +357,7 @@ ProcessStatus GlobalConfig::handleOk()
 
 			valuePtr = askCheckBox.isActive() ? "0" : "1";
 
-			debuggerKey.writeValue("Auto", valuePtr);
+			debuggerKey.writeValue(Auto, valuePtr);
 		}
 	}
 
@@ -345,46 +366,36 @@ ProcessStatus GlobalConfig::handleOk()
 		Registry	explorerKey1,
 					explorerKey2;
 
-		openResult = explorerKey1.openPublic(
-			"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
-			KEY_SET_VALUE|KEY_WOW64_64KEY
-		);
+		openResult = explorerKey1.openPublic( ShellFoldersKey, KEY_SET_VALUE|KEY_WOW64_64KEY );
 		if( openResult == ERROR_SUCCESS )
 		{
-			openResult = explorerKey2.openPublic(
-				"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders",
-				KEY_SET_VALUE|KEY_WOW64_64KEY
-			);
+			openResult = explorerKey2.openPublic( UserShellFoldersKey, KEY_SET_VALUE|KEY_WOW64_64KEY );
 			if( openResult == ERROR_SUCCESS )
 			{
 				EnvSTRING	valueEnv;
 
-				WriteFolderSetting( IDC_DESKTOP, "Common Desktop" );
-				WriteFolderSetting( IDC_FAVORITES, "Common Favorites" );
-				WriteFolderSetting( IDC_COMMON_START, "Common Start Menu" );
-				WriteFolderSetting( IDC_COMMON_PROG, "Common Programs" );
-				WriteFolderSetting( IDC_COMMON_AUTO, "Common Startup" );
-				WriteFolderSetting( IDC_ADMIN_MENU, "Common Administrative Tools" );
-				WriteFolderSetting( IDC_DOCUMENTS, "Common Documents" );
-				WriteFolderSetting( IDC_TEMPLATES, "Common Templates" );
-				WriteFolderSetting( IDC_APP_FILES, "Common AppData" );
+				WriteFolderSetting( IDC_DESKTOP, CommonDesktop );
+				WriteFolderSetting( IDC_FAVORITES, CommonFavorites );
+				WriteFolderSetting( IDC_COMMON_START, CommonStartMenu );
+				WriteFolderSetting( IDC_COMMON_PROG, CommonPrograms );
+				WriteFolderSetting( IDC_COMMON_AUTO, CommonStartup );
+				WriteFolderSetting( IDC_ADMIN_MENU, CommonAdministrativeTools );
+				WriteFolderSetting( IDC_DOCUMENTS, CommonDocuments );
+				WriteFolderSetting( IDC_TEMPLATES, CommonTemplates );
+				WriteFolderSetting( IDC_APP_FILES, CommonAppData );
 			}
 		}
 
 		Registry	internetKey;
 
-		openResult = internetKey.openPublic(
-			"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
-			KEY_SET_VALUE|KEY_WOW64_64KEY );
+		openResult = internetKey.openPublic( InternetSettingsKey, KEY_SET_VALUE|KEY_WOW64_64KEY );
 		if( openResult == ERROR_SUCCESS )
 		{
 			valueStr = getEditText( IDC_DOWNLOAD );
-			internetKey.writeValue( "ActiveXCache", valueStr );
+			internetKey.writeValue( ActiveXCache, valueStr );
 		}
 
-		openResult = internetKey.openPublic(
-			"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ActiveX Cache",
-			KEY_SET_VALUE|KEY_WOW64_64KEY );
+		openResult = internetKey.openPublic( ActiveXCacheKey, KEY_SET_VALUE|KEY_WOW64_64KEY );
 		if( openResult == ERROR_SUCCESS )
 		{
 			valueStr = getEditText( IDC_DOWNLOAD );

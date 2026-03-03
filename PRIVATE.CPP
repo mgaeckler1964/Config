@@ -67,6 +67,43 @@ using namespace winlib;
 using namespace gak;
 
 // --------------------------------------------------------------------- //
+// ----- constants ----------------------------------------------------- //
+// --------------------------------------------------------------------- //
+
+static const char ShellFoldersKey[] = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders";
+static const char UserShellFoldersKey[] = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders";
+static const char WinlogonKey[] = "Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon";
+static const char AdvancedKey[] = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced";
+static const char StreamsKey[] = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Streams";
+static const char StreamMRUKey[] = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StreamMRU";
+static const char LoadKey[] = "Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\Load";
+static const char RunKey[] = "Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\Run";
+
+static const char Desktop[] = "Desktop";
+static const char Favorites[] = "Favorites";
+static const char StartMenu[] = "Start Menu";
+static const char Programs[] = "Programs";
+static const char Startup[] = "Startup";
+static const char AdministrativeTools[] = "Administrative Tools";
+static const char Recent[] = "Recent";
+static const char SendTo[] = "SendTo";
+static const char Personal[] = "Personal";
+static const char MyPictures[] = "My Pictures";
+static const char MyVideo[] = "My Video";
+static const char MyMusic[] = "My Music";
+static const char Templates[] = "Templates";
+static const char AppData[] = "AppData";
+static const char LocalSettings[] = "Local Settings";
+static const char LocalAppData[] = "Local AppData";
+static const char Cache[] = "Cache";
+static const char Cookies[] = "Cookies";
+static const char History[] = "History";
+
+static const char ParseAutoexec[] = "ParseAutoexec";
+static const char RunLogonScriptSync[] = "RunLogonScriptSync";
+static const char PersistBrowsers[] = "PersistBrowsers";
+
+// --------------------------------------------------------------------- //
 // ----- class virtuals ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
@@ -78,10 +115,10 @@ ProcessStatus ConfigDialog::handleCreate()
 	STRING		valueBuff;
 	long		valueWord;
 
-	openResult = logonKey.openPrivate( "Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon" );
+	openResult = logonKey.openPrivate( WinlogonKey );
 	if( openResult == ERROR_SUCCESS )
 	{
-		if( logonKey.readValue( "ParseAutoexec", &valueBuff ) == rsOK )
+		if( logonKey.readValue( ParseAutoexec, &valueBuff ) == rsOK )
 		{
 			if( valueBuff[0U] == '0' )
 				clrButtonCheck( IDC_PARSE_AUTO );
@@ -89,7 +126,7 @@ ProcessStatus ConfigDialog::handleCreate()
 				setButtonCheck( IDC_PARSE_AUTO );
 		}
 
-		if( logonKey.readValue( "RunLogonScriptSync", &valueWord ) == rsOK )
+		if( logonKey.readValue( RunLogonScriptSync, &valueWord ) == rsOK )
 		{
 			if( valueWord )
 				setButtonCheck( IDC_WAIT_AUTO );
@@ -99,10 +136,10 @@ ProcessStatus ConfigDialog::handleCreate()
 	}
 
 
-	openResult = explorerKey.openPrivate( "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" );
+	openResult = explorerKey.openPrivate( AdvancedKey );
 	if( openResult == ERROR_SUCCESS )
 	{
-		if( explorerKey.readValue( "PersistBrowsers", &valueWord ) == rsOK )
+		if( explorerKey.readValue( PersistBrowsers, &valueWord ) == rsOK )
 		{
 			if( valueWord )
 				setButtonCheck( IDC_PERSIST_BROWSER );
@@ -113,103 +150,101 @@ ProcessStatus ConfigDialog::handleCreate()
 	}
 
 
-	openResult = explorerKey.openPrivate( 
-			"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
-	);
+	openResult = explorerKey.openPrivate( ShellFoldersKey );
 	if( openResult == ERROR_SUCCESS )
 	{
-		if( explorerKey.readValue( "Desktop", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( Desktop, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DESKTOP, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Favorites", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( Favorites, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_FAVORITES, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Start Menu", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( StartMenu, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_START_MENU, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Programs", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( Programs, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_PROGRAM_MENU, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Startup", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( Startup, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_AUTO_START, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Administrative Tools", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( AdministrativeTools, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_ADMIN_MENU, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Recent", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( Recent, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_RECENT, valueBuff );
 		}
 
-		if( explorerKey.readValue( "SendTo", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( SendTo, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_SEND_TO, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Personal", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( Personal, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_DOCUMENTS, valueBuff );
 		}
 
-		if( explorerKey.readValue( "My Pictures", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( MyPictures, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_PICTURES, valueBuff );
 		}
 
-		if( explorerKey.readValue( "My Video", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( MyVideo, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_VIDEOS, valueBuff );
 		}
 
-		if( explorerKey.readValue( "My Music", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( MyMusic, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_MUSIC, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Templates", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( Templates, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_TEMPLATES, valueBuff );
 		}
 
-		if( explorerKey.readValue( "AppData", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( AppData, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_APP_FILES, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Local Settings", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( LocalSettings, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_LOCAL_SETTINGS, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Local AppData", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( LocalAppData, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_LAPP_FILES, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Cache", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( Cache, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_IE_CACHE, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Cookies", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( Cookies, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_IE_COOKIES, valueBuff );
 		}
 
 
-		if( explorerKey.readValue( "History", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( History, &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_IE_HISTORY, valueBuff );
 		}
@@ -247,64 +282,53 @@ ProcessStatus ConfigDialog::handleOk()
 	const char	*userProfile = getenv( "USERPROFILE" );
 	size_t		userLen = userProfile ? strlen( userProfile ) : 0;
 
-	openResult = logonKey.openPrivate(
-		"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", KEY_SET_VALUE|KEY_WOW64_64KEY 
-	);
+	openResult = logonKey.openPrivate( WinlogonKey, KEY_SET_VALUE|KEY_WOW64_64KEY );
 	if( openResult == ERROR_SUCCESS )
 	{
 		valueStr = isButtonChecked( IDC_PARSE_AUTO ) ? '1' : '0';
-		logonKey.writeValue( "ParseAutoexec", valueStr );
+		logonKey.writeValue( ParseAutoexec, valueStr );
 
 		valueWord = isButtonChecked( IDC_WAIT_AUTO ) ? 1 : 0;
-		logonKey.writeValue( "RunLogonScriptSync", valueWord );
+		logonKey.writeValue( RunLogonScriptSync, valueWord );
 
 		logonKey.close();
 	}
 
-	openResult = advKey.openPrivate(
-		"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-		KEY_SET_VALUE|KEY_WOW64_64KEY
-	);
+	openResult = advKey.openPrivate( AdvancedKey, KEY_SET_VALUE|KEY_WOW64_64KEY );
 	if( openResult == ERROR_SUCCESS )
 	{
 		valueWord = isButtonChecked( IDC_PERSIST_BROWSER ) ? 1 : 0;
-		advKey.writeValue( "PersistBrowsers", valueWord );
+		advKey.writeValue( PersistBrowsers, valueWord );
 	}
 
 	gak::int8 ver = getWindowsMajorVersion();
 	if( ver <= 5 )	// windows XP or earlier
 	{
-		openResult = explorerKey1.openPrivate(
-			"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
-			KEY_SET_VALUE|KEY_WOW64_64KEY 
-		);
+		openResult = explorerKey1.openPrivate( ShellFoldersKey, KEY_SET_VALUE|KEY_WOW64_64KEY );
 		if( openResult == ERROR_SUCCESS )
 		{
-			openResult = explorerKey2.openPrivate(
-				"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders",
-				KEY_SET_VALUE|KEY_WOW64_64KEY 
-			);
+			openResult = explorerKey2.openPrivate( UserShellFoldersKey, KEY_SET_VALUE|KEY_WOW64_64KEY );
 			if( openResult == ERROR_SUCCESS )
 			{
-				WriteFolderSetting(IDC_DESKTOP, "Desktop");
-				WriteFolderSetting(IDC_FAVORITES, "Favorites");
-				WriteFolderSetting(IDC_START_MENU, "Start Menu");
-				WriteFolderSetting(IDC_PROGRAM_MENU, "Programs");
-				WriteFolderSetting(IDC_AUTO_START, "Startup");
-				WriteFolderSetting(IDC_ADMIN_MENU, "Administrative Tools");
-				WriteFolderSetting(IDC_RECENT, "Recent");
-				WriteFolderSetting(IDC_SEND_TO, "SendTo");
-				WriteFolderSetting(IDC_DOCUMENTS, "Personal");
-				WriteFolderSetting(IDC_PICTURES, "My Pictures");
-				WriteFolderSetting(IDC_VIDEOS, "My Video");
-				WriteFolderSetting(IDC_MUSIC, "My Music");
-				WriteFolderSetting(IDC_TEMPLATES, "Templates");
-				WriteFolderSetting(IDC_APP_FILES, "AppData");
-				WriteFolderSetting(IDC_LOCAL_SETTINGS, "Local Settings");
-				WriteFolderSetting(IDC_LAPP_FILES, "Local AppData");
-				WriteFolderSetting(IDC_IE_CACHE, "Cache");
-				WriteFolderSetting(IDC_IE_COOKIES, "Cookies");
-				WriteFolderSetting(IDC_IE_HISTORY, "History");
+				WriteFolderSetting(IDC_DESKTOP, Desktop);
+				WriteFolderSetting(IDC_FAVORITES, Favorites);
+				WriteFolderSetting(IDC_START_MENU, StartMenu);
+				WriteFolderSetting(IDC_PROGRAM_MENU, Programs);
+				WriteFolderSetting(IDC_AUTO_START, Startup);
+				WriteFolderSetting(IDC_ADMIN_MENU, AdministrativeTools);
+				WriteFolderSetting(IDC_RECENT, Recent);
+				WriteFolderSetting(IDC_SEND_TO, SendTo);
+				WriteFolderSetting(IDC_DOCUMENTS, Personal);
+				WriteFolderSetting(IDC_PICTURES, MyPictures);
+				WriteFolderSetting(IDC_VIDEOS, MyVideo);
+				WriteFolderSetting(IDC_MUSIC, MyMusic);
+				WriteFolderSetting(IDC_TEMPLATES, Templates);
+				WriteFolderSetting(IDC_APP_FILES, AppData);
+				WriteFolderSetting(IDC_LOCAL_SETTINGS, LocalSettings);
+				WriteFolderSetting(IDC_LAPP_FILES, LocalAppData);
+				WriteFolderSetting(IDC_IE_CACHE, Cache);
+				WriteFolderSetting(IDC_IE_COOKIES, Cookies);
+				WriteFolderSetting(IDC_IE_HISTORY, History);
 			}
 		}
 	}
@@ -336,7 +360,7 @@ ProcessStatus ConfigDialog::handleCommand( int cmd )
 		{
 			std::auto_ptr<RegistryEditor>	theDialog(new RegistryEditor);
 
-			theDialog->create( this, "Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\Load" );
+			theDialog->create( this, LoadKey );
 
 /*v*/		break;
 		}
@@ -344,7 +368,7 @@ ProcessStatus ConfigDialog::handleCommand( int cmd )
 		{
 			std::auto_ptr<RegistryEditor>	theDialog(new RegistryEditor);
 
-			theDialog->create( this, "Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\Run" );
+			theDialog->create( this, RunKey );
 
 /*v*/		break;
 		}
@@ -355,7 +379,7 @@ ProcessStatus ConfigDialog::handleCommand( int cmd )
 			Registry		streams;
 			char			buffer[1024];
 
-			errorCode = streams.openPrivate( "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Streams" );
+			errorCode = streams.openPrivate( StreamsKey, KEY_ALL_ACCESS|KEY_WOW64_64KEY );
 			if( errorCode == ERROR_SUCCESS )
 			{
 				for(
@@ -376,7 +400,7 @@ ProcessStatus ConfigDialog::handleCommand( int cmd )
 				messageBox( buffer, "Fehler", MB_ICONSTOP );
 			}
 
-			errorCode = streams.openKey( false, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StreamMRU" );
+			errorCode = streams.openPrivate( StreamMRUKey, KEY_ALL_ACCESS|KEY_WOW64_64KEY );
 			if( errorCode == ERROR_SUCCESS )
 			{
 				for(
