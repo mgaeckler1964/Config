@@ -66,6 +66,20 @@
 using namespace winlib;
 using namespace gak;
 
+/// TODO create more string constants
+static const char Wallpaper[] = "Wallpaper";
+static const char TileWallpaper[] = "TileWallpaper";
+static const char SCRNSAVE_EXE[] = "SCRNSAVE.EXE";
+static const char ScreenSaveTimeOut[] = "ScreenSaveTimeOut";
+static const char DebuggerValueName[] = "Debugger";
+
+
+#define NO_DEBUG_CHANGE	"*"
+inline bool canChangeDebugger( const char *val )
+{
+	return strcmp( val, NO_DEBUG_CHANGE );
+}
+
 struct Debugger
 {
 	const char *title, *command;
@@ -77,24 +91,21 @@ struct Debugger
 	{ "Dr. Watson", "drwtsn32 -p %ld -e %ld -g" },
 	{ "Turbo Debugger", "td32 -as%ld;-ae%ld" },
 	{ "Visual Studio", "vsjitdebugger.exe -p %ld -e %ld" },
+	{ "Unknown", NO_DEBUG_CHANGE },
 	{ "NONE", "" }
 };
 
-static size_t replaceEnvironment( char valueBuff[], const char *env )
+static bool replaceEnvironment( STRING &valueStr, const char *env )
 {
 	char	*envVar = getenv( env );
 	size_t	envLen = envVar ? strlen( envVar ) : 0;
 
-	if( envLen )
+	if( envLen && !valueStr.comparenI( envVar, envLen ) )
 	{
-		STRING tmpBuff = "%";
-		tmpBuff += env;
-		tmpBuff += '%';
-		tmpBuff += valueBuff + envLen;
-		strcpy( valueBuff, tmpBuff );
+		valueStr.replaceText( 0, envLen, STRING("%") + env + "%" );
+		return true;
 	}
-
-	return strlen( valueBuff ) + 1;
+	return false;
 }
 
 // --------------------------------------------------------------------- //
@@ -113,10 +124,10 @@ ProcessStatus GlobalConfig::handleCreate()
 	openResult = desktopKey.openUsers( ".default\\Control Panel\\Desktop" );
 	if( openResult == ERROR_SUCCESS )
 	{
-		if( desktopKey.readValue( "Wallpaper", &valueBuff ) == rsOK )
+		if( desktopKey.readValue( Wallpaper, &valueBuff ) == rsOK )
 			setEditText( IDE_WALLPAPER, valueBuff );
 
-		if( desktopKey.readValue( "TileWallpaper", &valueBuff ) == rsOK )
+		if( desktopKey.readValue( TileWallpaper, &valueBuff ) == rsOK )
 		{
 			if( valueBuff[0U] == '0' )
 				clrButtonCheck( IDC_TILE_WALL );
@@ -124,10 +135,10 @@ ProcessStatus GlobalConfig::handleCreate()
 				setButtonCheck( IDC_TILE_WALL );
 		}
 
-		if( desktopKey.readValue( "SCRNSAVE.EXE", &valueBuff ) == rsOK )
+		if( desktopKey.readValue( SCRNSAVE_EXE, &valueBuff ) == rsOK )
 			setEditText( IDE_SCREEN_SAVER, valueBuff );
 
-		if( desktopKey.readValue( "ScreenSaveTimeOut", &valueBuff ) == rsOK && !valueBuff.isEmpty())
+		if( desktopKey.readValue( ScreenSaveTimeOut, &valueBuff ) == rsOK && !valueBuff.isEmpty())
 		{
 			int		timeOut = valueBuff.getValueN<int>() / 60;
 			valueBuff = gak::formatNumber(timeOut);
@@ -144,7 +155,7 @@ ProcessStatus GlobalConfig::handleCreate()
 	openResult = debuggerKey.openPublic( "Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug" );
 	if( openResult == ERROR_SUCCESS )
 	{
-		if( debuggerKey.readValue( "Debugger", &valueBuff ) == rsOK )
+		if( debuggerKey.readValue( DebuggerValueName, &valueBuff ) == rsOK )
 		{
 			bool	found = false;
 			for( int i=0; i<arraySize( debuggerList ); ++i )
@@ -155,7 +166,7 @@ ProcessStatus GlobalConfig::handleCreate()
 					break;
 				}
 			if( !found )
-				debuggerCombo.selectEntry(arraySize( debuggerList )-1);
+				debuggerCombo.selectEntry(arraySize( debuggerList )-2);
 		}
 		else
 			debuggerCombo.selectEntry(arraySize( debuggerList )-1);
@@ -199,7 +210,7 @@ ProcessStatus GlobalConfig::handleCreate()
 			setEditText( IDC_COMMON_AUTO, valueBuff );
 		}
 
-		if( explorerKey.readValue( "Common Administrative", &valueBuff ) == rsOK )
+		if( explorerKey.readValue( "Common Administrative Tools", &valueBuff ) == rsOK )
 		{
 			setEditText( IDC_ADMIN_MENU, valueBuff );
 		}
@@ -220,7 +231,7 @@ ProcessStatus GlobalConfig::handleCreate()
 		}
 	}
 
-	openResult = debuggerKey.openPublic( "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" );
+	openResult = internetKey.openPublic( "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" );
 	if( openResult == ERROR_SUCCESS )
 	{
 		if( internetKey.readValue( "ActiveXCache", &valueBuff ) == rsOK )
@@ -232,284 +243,165 @@ ProcessStatus GlobalConfig::handleCreate()
 	return psDO_DEFAULT;
 }
 
+#define WriteFolderSetting( editID, regKey )						\
+{																	\
+	valueStr = getEditText( editID );								\
+	explorerKey1.writeValue( regKey, valueStr );					\
+	replaceEnvironment( valueStr, "ALLUSERSPROFILE" )	||			\
+	replaceEnvironment( valueStr, "PUBLIC" )			||			\
+	replaceEnvironment( valueStr, "ProgramData" );					\
+	valueEnv = valueStr;											\
+	explorerKey2.writeValue( regKey, valueEnv );					\
+}
+
 ProcessStatus GlobalConfig::handleOk()
 {
-#if 0											// actually disabled
 	long		openResult;
-	HKEY		desktopKey,
-				backgroundKey,
-				explorerKey1,
-				explorerKey2,
-				debuggerKey,
-				internetKey;
-	int			selectedDebugger;
-	DWORD		valueSize;
-	const char	*valuePtr;
-	char		valueBuff[1024];
-	int			timeOut;
+	STRING		valueStr;
 
-	STRING		tmpBuff;
-
-	openResult = RegOpenKeyEx(	HKEY_USERS,
-								".default\\Control Panel\\Desktop", 0,
-								KEY_SET_VALUE, &desktopKey );
-	if( openResult == ERROR_SUCCESS )
+	gak::uint8 major, minor;
+	gak::uint16 build;
+	getWindowsVersion(&major, &minor, &build );
+	if( major <= 5 )	// windows XP or earlier
 	{
-		getEditText( IDE_WALLPAPER, valueBuff, sizeof( valueBuff ) );
-		valueSize = DWORD(strlen( valueBuff ) + 1);
-		RegSetValueEx( desktopKey, "Wallpaper", 0,
-						REG_SZ, (LPBYTE)valueBuff, valueSize );
+		Registry	desktopKey;
+		openResult = desktopKey.openUsers(	".default\\Control Panel\\Desktop", KEY_SET_VALUE|KEY_WOW64_64KEY );
+		if( openResult == ERROR_SUCCESS )
+		{
+			valueStr = getEditText( IDE_WALLPAPER );
+			desktopKey.writeValue( Wallpaper, valueStr );
 
-		if( isButtonChecked( IDC_TILE_WALL ) )
-			strcpy( valueBuff, "1" );
-		else
-			strcpy( valueBuff, "0" );
-		valueSize = DWORD(strlen( valueBuff ) + 1);
-		RegSetValueEx( desktopKey, "TileWallpaper", 0,
-						REG_SZ, (LPBYTE)valueBuff, valueSize );
+			valueStr = isButtonChecked( IDC_TILE_WALL ) ? '1' : '0';
+			desktopKey.writeValue( TileWallpaper, valueStr );
 
-		getEditText( IDE_SCREEN_SAVER, valueBuff, sizeof( valueBuff ) );
-		valueSize = DWORD(strlen( valueBuff ) + 1);
-		RegSetValueEx( desktopKey, "SCRNSAVE.EXE", 0,
-						REG_SZ, (LPBYTE)valueBuff, valueSize );
+			valueStr = isButtonChecked( IDE_SCREEN_SAVER );
+			desktopKey.writeValue( SCRNSAVE_EXE, valueStr );
 
-		getEditText( IDE_SAVER_TIMEOUT, valueBuff, sizeof( valueBuff ) );
-		timeOut = atoi( valueBuff ) * 60;
-		itoa( timeOut, valueBuff, 10 );
-		valueSize = DWORD(strlen( valueBuff ) + 1);
-		RegSetValueEx( desktopKey, "ScreenSaveTimeOut", 0,
-						REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-		_RegCloseKey( desktopKey );
+			int timeOut = getEditText( IDE_SAVER_TIMEOUT ).getValueN<int>() * 60;
+			valueStr = formatNumber( timeOut );
+			desktopKey.writeValue( ScreenSaveTimeOut, valueStr );
+		}
 	}
 
+	if( major == 6 && minor == 1 )	// check for win 7
+	{
+		Registry	backgroundKey;
 
-	openResult = RegOpenKeyEx(
-		_HKEY_LOCAL_MACHINE,
-		"Software\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\Background",
-		0, KEY_SET_VALUE, &backgroundKey
+		openResult = backgroundKey.openPublic(
+			"Software\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\Background",
+			KEY_SET_VALUE|KEY_WOW64_64KEY
+		);
+		if( openResult == ERROR_SUCCESS )
+		{
+			long longValue = 0;
+			valueStr = getEditText( IDE_WALLPAPER );
+
+			if( !valueStr.isEmpty() )
+			{
+				STRING	newPath = getenv( "windir" );
+				newPath += "\\system32\\oobe";
+				mkdir( newPath );
+				newPath += "\\info";
+				mkdir( newPath );
+				newPath += "\\backgrounds";
+				mkdir( newPath );
+				newPath += "\\backgroundDefault.jpg";
+
+				fcopy( valueStr, newPath );
+
+				longValue = 1;
+			}
+
+			openResult = backgroundKey.writeValue( "OEMBackground", longValue );
+			doLogValueEx( gakLogging::llDetail, openResult );
+		}
+	}
+
+	Registry	debuggerKey;
+	openResult = debuggerKey.openPublic(
+		"Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug",
+		KEY_SET_VALUE|KEY_WOW64_64KEY
 	);
 	if( openResult == ERROR_SUCCESS )
 	{
-		DWORD dwValue = 0;
-		getEditText( IDE_WALLPAPER, valueBuff, sizeof( valueBuff ) );
+		int selectedDebugger = debuggerCombo.getSelection();
 
-		if( *valueBuff )
+		const char	*valuePtr = selectedDebugger < arraySize( debuggerList )
+			? debuggerList[selectedDebugger].command
+			: NO_DEBUG_CHANGE;
+
+		if( canChangeDebugger( valuePtr ) )
 		{
-			STRING	newPath = getenv( "windir" );
-			newPath += "\\system32\\oobe";
-			mkdir( newPath );
-			newPath += "\\info";
-			mkdir( newPath );
-			newPath += "\\backgrounds";
-			mkdir( newPath );
-			newPath += "\\backgroundDefault.jpg";
+			debuggerKey.writeValue( DebuggerValueName, valuePtr );
 
-			fcopy( valueBuff, (const char *)newPath );
+			valuePtr = askCheckBox.isActive() ? "0" : "1";
 
-			dwValue = 1;
+			debuggerKey.writeValue("Auto", valuePtr);
 		}
-
-		openResult = RegSetValueEx( backgroundKey, "OEMBackground", 0,
-					REG_DWORD, (LPBYTE)&dwValue, sizeof( dwValue ) );
-
-		doLogValue( openResult );
-
-		_RegCloseKey( backgroundKey );
 	}
 
-
-	openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
-								"Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", 0,
-								KEY_SET_VALUE, &debuggerKey );
-	if( openResult == ERROR_SUCCESS )
+	if( major <= 5 )	// windows XP or earlier
 	{
-		selectedDebugger = debuggerCombo.getSelection();
+		Registry	explorerKey1,
+					explorerKey2;
 
-		if( selectedDebugger < arraySize( debuggerList ) )
-			valuePtr = debuggerList[selectedDebugger].command;
-		else
-			valuePtr = "";
-
-		RegSetValueEx( 
-			debuggerKey, "Debugger", 0,
-			REG_SZ, LPBYTE(valuePtr), DWORD(strlen(valuePtr)+1) 
+		openResult = explorerKey1.openPublic(
+			"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
+			KEY_SET_VALUE|KEY_WOW64_64KEY
 		);
-
-		if( askCheckBox.isActive() )
-			valuePtr = "0";
-		else
-			valuePtr = "1";
-
-		RegSetValueEx( 
-			debuggerKey, "Auto", 0,
-			REG_SZ, LPBYTE(valuePtr), DWORD(strlen(valuePtr)+1) 
-		);
-
-
-		_RegCloseKey( debuggerKey );
-	}
-
-	openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders", 0,
-								KEY_SET_VALUE, &explorerKey1 );
-	if( openResult == ERROR_SUCCESS )
-	{
-		openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders", 0,
-								KEY_SET_VALUE, &explorerKey2 );
 		if( openResult == ERROR_SUCCESS )
 		{
-			getEditText( IDC_DESKTOP, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Common Desktop", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
+			openResult = explorerKey2.openPublic(
+				"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders",
+				KEY_SET_VALUE|KEY_WOW64_64KEY
+			);
+			if( openResult == ERROR_SUCCESS )
+			{
+				EnvSTRING	valueEnv;
 
-			replaceEnvironment( valueBuff, "ALLUSERSPROFILE" );
-			replaceEnvironment( valueBuff, "PUBLIC" );
-			valueSize = DWORD( replaceEnvironment( valueBuff, "ProgramData" ) );
-
-			RegSetValueEx( explorerKey2, "Common Desktop", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_FAVORITES, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Common Favorites", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			replaceEnvironment( valueBuff, "ALLUSERSPROFILE" );
-			replaceEnvironment( valueBuff, "PUBLIC" );
-			valueSize = DWORD( replaceEnvironment( valueBuff, "ProgramData" ) );
-
-			RegSetValueEx( explorerKey2, "Common Favorites", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_COMMON_START, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Common Start Menu", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			replaceEnvironment( valueBuff, "ALLUSERSPROFILE" );
-			replaceEnvironment( valueBuff, "PUBLIC" );
-			valueSize = DWORD( replaceEnvironment( valueBuff, "ProgramData" ) );
-
-			RegSetValueEx( explorerKey2, "Common Start Menu", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_COMMON_PROG, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Common Programs", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			replaceEnvironment( valueBuff, "ALLUSERSPROFILE" );
-			replaceEnvironment( valueBuff, "PUBLIC" );
-			valueSize = DWORD( replaceEnvironment( valueBuff, "ProgramData" ) );
-
-			RegSetValueEx( explorerKey2, "Common Programs", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_COMMON_AUTO, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Common Startup", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			replaceEnvironment( valueBuff, "ALLUSERSPROFILE" );
-			replaceEnvironment( valueBuff, "PUBLIC" );
-			valueSize = DWORD( replaceEnvironment( valueBuff, "ProgramData" ) );
-
-			RegSetValueEx( explorerKey2, "Common Startup", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_ADMIN_MENU, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Common Administrative Tools", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			replaceEnvironment( valueBuff, "ALLUSERSPROFILE" );
-			replaceEnvironment( valueBuff, "PUBLIC" );
-			valueSize = DWORD( replaceEnvironment( valueBuff, "ProgramData" ) );
-
-			RegSetValueEx( explorerKey2, "Common Administrative Tools", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_DOCUMENTS, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Common Documents", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			replaceEnvironment( valueBuff, "ALLUSERSPROFILE" );
-			replaceEnvironment( valueBuff, "PUBLIC" );
-			valueSize = DWORD( replaceEnvironment( valueBuff, "ProgramData" ) );
-
-			RegSetValueEx( explorerKey2, "Common Documents", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			getEditText( IDC_TEMPLATES, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Common Templates", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			replaceEnvironment( valueBuff, "ALLUSERSPROFILE" );
-			replaceEnvironment( valueBuff, "PUBLIC" );
-			valueSize = DWORD( replaceEnvironment( valueBuff, "ProgramData" ) );
-
-			RegSetValueEx( explorerKey2, "Common Templates", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-
-			getEditText( IDC_APP_FILES, valueBuff, sizeof( valueBuff ) );
-			valueSize = DWORD(strlen( valueBuff ) + 1);
-			RegSetValueEx( explorerKey1, "Common AppData", 0,
-							REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-			replaceEnvironment( valueBuff, "ALLUSERSPROFILE" );
-			replaceEnvironment( valueBuff, "PUBLIC" );
-			valueSize = DWORD( replaceEnvironment( valueBuff, "ProgramData" ) );
-
-			RegSetValueEx( explorerKey2, "Common AppData", 0,
-							REG_EXPAND_SZ, (LPBYTE)valueBuff, valueSize );
-
-			_RegCloseKey( explorerKey2 );
+				WriteFolderSetting( IDC_DESKTOP, "Common Desktop" );
+				WriteFolderSetting( IDC_FAVORITES, "Common Favorites" );
+				WriteFolderSetting( IDC_COMMON_START, "Common Start Menu" );
+				WriteFolderSetting( IDC_COMMON_PROG, "Common Programs" );
+				WriteFolderSetting( IDC_COMMON_AUTO, "Common Startup" );
+				WriteFolderSetting( IDC_ADMIN_MENU, "Common Administrative Tools" );
+				WriteFolderSetting( IDC_DOCUMENTS, "Common Documents" );
+				WriteFolderSetting( IDC_TEMPLATES, "Common Templates" );
+				WriteFolderSetting( IDC_APP_FILES, "Common AppData" );
+			}
 		}
-		_RegCloseKey( explorerKey1 );
+
+		Registry	internetKey;
+
+		openResult = internetKey.openPublic(
+			"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
+			KEY_SET_VALUE|KEY_WOW64_64KEY );
+		if( openResult == ERROR_SUCCESS )
+		{
+			valueStr = getEditText( IDC_DOWNLOAD );
+			internetKey.writeValue( "ActiveXCache", valueStr );
+		}
+
+		openResult = internetKey.openPublic(
+			"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ActiveX Cache",
+			KEY_SET_VALUE|KEY_WOW64_64KEY );
+		if( openResult == ERROR_SUCCESS )
+		{
+			valueStr = getEditText( IDC_DOWNLOAD );
+			internetKey.writeValue( "0", valueStr );
+			internetKey.deleteValue( "1" );
+			internetKey.deleteValue( "2" );
+			internetKey.deleteValue( "3" );
+			internetKey.deleteValue( "4" );
+		}
 	}
 
-	openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings", 0,
-								KEY_SET_VALUE, &internetKey );
-	if( openResult == ERROR_SUCCESS )
-	{
-		getEditText( IDC_DOWNLOAD, valueBuff, sizeof( valueBuff ) );
-		valueSize = DWORD(strlen( valueBuff ) + 1);
-		RegSetValueEx( internetKey, "ActiveXCache", 0,
-						REG_SZ, (LPBYTE)valueBuff, valueSize );
-
-		_RegCloseKey( internetKey );
-	}
-
-	openResult = RegOpenKeyEx(	_HKEY_LOCAL_MACHINE,
-								"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ActiveX Cache", 0,
-								KEY_SET_VALUE, &internetKey );
-	if( openResult == ERROR_SUCCESS )
-	{
-		getEditText( IDC_DOWNLOAD, valueBuff, sizeof( valueBuff ) );
-		valueSize = DWORD(strlen( valueBuff ) + 1);
-		RegSetValueEx( internetKey, "0", 0,
-						REG_SZ, (LPBYTE)valueBuff, valueSize );
-		RegDeleteValue( internetKey, "1" );
-		RegDeleteValue( internetKey, "2" );
-		RegDeleteValue( internetKey, "3" );
-		RegDeleteValue( internetKey, "4" );
-
-		_RegCloseKey( internetKey );
-	}
-#endif
 	return psDO_DEFAULT;
 }
 
 ProcessStatus GlobalConfig::handleCommand( int cmd )
 {
-	char valueBuff[1024];
+	char valueBuff[10240];
 
 	switch( cmd )
 	{
@@ -536,7 +428,7 @@ ProcessStatus GlobalConfig::handleCommand( int cmd )
 		case IDPB_BROWSE_SAVER:
 		{
 			OpenFileDialog	dialog;
-			char			directory[1024];
+			char			directory[10240];
 			STRING			fileName;
 			const char		*lastBackSlash;
 
