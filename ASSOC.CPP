@@ -48,13 +48,8 @@
 #ifdef __BORLANDC__
 #	pragma option -RT-
 #	pragma option -b
-#	ifdef __WIN32__
-#		pragma option -a4
-#		pragma option -pc
-#	else
-#		pragma option -po
-#		pragma option -a2
-#	endif
+#	pragma option -a4
+#	pragma option -pc
 #endif
 
 using namespace winlib;
@@ -65,9 +60,9 @@ using namespace winlib;
 
 class FileType : public ListObject
 {
-	STRING	m_identifier;
-	STRING	m_commandLine;
-	STRING	m_printCommand;
+	STRING	m_identifier;	// key name under .../Classes/Root
+	STRING	m_commandLine;	// the value of the key <ident>/shell/open/coomand
+	STRING	m_printCommand;	// the value of the key <ident>/shell/print/coomand
 	bool	m_publicKey;
 
 	void loadFileType();

@@ -46,13 +46,8 @@
 #ifdef __BORLANDC__
 #	pragma option -RT-
 #	pragma option -b
-#	ifdef __WIN32__
-#		pragma option -a4
-#		pragma option -pc
-#	else
-#		pragma option -po
-#		pragma option -a2
-#	endif
+#	pragma option -a4
+#	pragma option -pc
 #endif
 
 using namespace winlib;

@@ -48,13 +48,8 @@
 #ifdef __BORLANDC__
 #	pragma option -RT-
 #	pragma option -b
-#	ifdef __WIN32__
-#		pragma option -a4
-#		pragma option -pc
-#	else
-#		pragma option -po
-#		pragma option -a2
-#	endif
+#	pragma option -a4
+#	pragma option -pc
 #endif
 
 using namespace winlib;
@@ -68,7 +63,7 @@ class AssociationsConfig : public ModalDialog
 	ListBox				fileTypeBox;		// all file types found
 	ListboxContainer	m_data;
 
-	bool				m_publicKey;
+	bool				m_publicKey;		// true for public classes HKEY_LOCAL_MACHINE\Software\Classes
 
 	virtual ProcessStatus handleCreate();
 	virtual ProcessStatus handleCommand( int cmd );
