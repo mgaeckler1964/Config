@@ -353,7 +353,7 @@ ProcessStatus ConfigDialog::handleCommand( int cmd )
 		}
 		case NT_AUTO_LOAD:
 		{
-			std::auto_ptr<RegistryEditor>	theDialog(new RegistryEditor);
+			std::unique_ptr<RegistryEditor>	theDialog(new RegistryEditor);
 
 			theDialog->create( this, LoadKey );
 
@@ -361,7 +361,7 @@ ProcessStatus ConfigDialog::handleCommand( int cmd )
 		}
 		case NT_AUTO_RUN:
 		{
-			std::auto_ptr<RegistryEditor>	theDialog(new RegistryEditor);
+			std::unique_ptr<RegistryEditor>	theDialog(new RegistryEditor);
 
 			theDialog->create( this, RunKey );
 

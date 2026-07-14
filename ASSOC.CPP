@@ -136,7 +136,7 @@ ProcessStatus AssociationsConfig::handleCreate()
 		const STRING &key = *it;
 		if( !key.isEmpty() && *key.c_str() != '.' )
 		{
-			std::auto_ptr<FileType>	theFileType( new FileType( key, m_publicKey ) );
+			std::unique_ptr<FileType>	theFileType( new FileType( key, m_publicKey ) );
 			if( theFileType->isValidAssociation() )
 				m_data.addEntry( theFileType.release() );
 		}

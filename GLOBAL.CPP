@@ -29,6 +29,8 @@
 		SUCH DAMAGE.
 */
 
+#define _CRT_SECURE_NO_WARNINGS 1
+
 // --------------------------------------------------------------------- //
 // ----- includes ------------------------------------------------------ //
 // --------------------------------------------------------------------- //
@@ -177,7 +179,7 @@ ProcessStatus GlobalConfig::handleCreate()
 		if( debuggerKey.readValue( DebuggerValueName, &valueBuff ) == rsOK )
 		{
 			bool	found = false;
-			for( int i=0; i<arraySize( debuggerList ); ++i )
+			for( int i=0; i<int(arraySize( debuggerList )); ++i )
 				if( !strcmpi( valueBuff, debuggerList[i].command ) )
 				{
 					debuggerCombo.selectEntry(i);
@@ -185,10 +187,10 @@ ProcessStatus GlobalConfig::handleCreate()
 					break;
 				}
 			if( !found )
-				debuggerCombo.selectEntry(arraySize( debuggerList )-2);
+				debuggerCombo.selectEntry(int(arraySize( debuggerList )-2));
 		}
 		else
-			debuggerCombo.selectEntry(arraySize( debuggerList )-1);
+			debuggerCombo.selectEntry(int(arraySize( debuggerList )-1));
 
 		if( debuggerKey.readValue( Auto, &valueBuff ) == rsOK )
 		{
@@ -199,7 +201,7 @@ ProcessStatus GlobalConfig::handleCreate()
 		}
 	}
 	else
-		debuggerCombo.selectEntry(arraySize( debuggerList )-1);
+		debuggerCombo.selectEntry(int(arraySize( debuggerList )-1));
 
 	openResult = explorerKey.openPublic( ShellFoldersKey );
 	if( openResult == ERROR_SUCCESS )
@@ -342,7 +344,7 @@ ProcessStatus GlobalConfig::handleOk()
 	{
 		int selectedDebugger = debuggerCombo.getSelection();
 
-		const char	*valuePtr = selectedDebugger < arraySize( debuggerList )
+		const char	*valuePtr = selectedDebugger < int(arraySize( debuggerList ))
 			? debuggerList[selectedDebugger].command
 			: NO_DEBUG_CHANGE;
 

@@ -177,8 +177,8 @@ ProcessStatus FileTypeDialog::handleCommand( int cmd )
 	}
 	else if( cmd == IDPB_CREATE_COMMAND )
 	{
-		std::auto_ptr<FileCommand>  command( new FileCommand( m_identifier, m_publicKey ) );
-		if( command.get() )
+		std::unique_ptr<FileCommand>  command( new FileCommand( m_identifier, m_publicKey ) );
+		if( command )
 		{
 			CommandDialog	dialog( command .get());
 			if( dialog.create( this ) == IDOK )
