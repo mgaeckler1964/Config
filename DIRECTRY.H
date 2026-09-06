@@ -42,7 +42,7 @@
 #include <winlib\ListCont.h>
 */
 
-#include <winlib\dialogwi.h>
+#include <winlib\DialogWindow.h>
 #include "config.h"
 
 // --------------------------------------------------------------------- //
@@ -66,8 +66,8 @@ class DirectoryDialog : public ModalDialog
 {
 	STRING	m_directory;
 
-	virtual ProcessStatus handleCreate();
-	virtual ProcessStatus handleSelectionChange( int control );
+	ProcessStatus handleCreate() override;
+	ProcessStatus handleSelectionChange( int control ) override;
 
 	public:
 	DirectoryDialog( const STRING &newDir ) : m_directory(newDir) {}

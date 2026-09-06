@@ -33,8 +33,8 @@
 // ----- includes ------------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-#include <winlib\dialogwi.h>
-#include <winlib\ListCont.h>
+#include <winlib\DialogWindow.h>
+#include <winlib\ListboxContainer.h>
 
 #include "config.h"
 
@@ -66,8 +66,8 @@ class FileTypeDialog : public ModalDialog
 	ListBox				extensionList;	// the extensions (..\Software\Classes\.ext) associated with this file type
 	ListboxContainer	extensionData;
 
-	virtual ProcessStatus handleCreate();
-	virtual ProcessStatus handleCommand( int cmd );
+	ProcessStatus handleCreate() override;
+	ProcessStatus handleCommand( int cmd ) override;
 
 	public:
 	FileTypeDialog( const STRING &type, bool publicKey ) : m_identifier(type), m_publicKey(publicKey)

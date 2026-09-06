@@ -36,8 +36,8 @@
 // ----- includes ------------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-#include <winlib\ListCont.h>
-#include <winlib\dialogwi.h>
+#include <winlib\ListboxContainer.h>
+#include <winlib\DialogWindow.h>
 
 #include "config.h"
 
@@ -65,8 +65,8 @@ class AssociationsConfig : public ModalDialog
 
 	bool				m_publicKey;		// true for public classes HKEY_LOCAL_MACHINE\Software\Classes
 
-	virtual ProcessStatus handleCreate();
-	virtual ProcessStatus handleCommand( int cmd );
+	ProcessStatus handleCreate() override;
+	ProcessStatus handleCommand( int cmd ) override;
 
 	public:
 	AssociationsConfig( bool publicKey ) : m_publicKey(publicKey) {}

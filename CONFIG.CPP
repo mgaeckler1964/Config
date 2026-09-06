@@ -60,7 +60,7 @@ class NTconfiguration : public Application
 
 	public:
 	NTconfiguration() : Application( CONFIG_ICON ) {};
-	virtual CallbackWindow	*createMainWindow( const char *cmdLine, int nCmdShow );
+	CallbackWindow	*createMainWindow( const char *cmdLine, int nCmdShow ) override;
 };
 
 // --------------------------------------------------------------------- //

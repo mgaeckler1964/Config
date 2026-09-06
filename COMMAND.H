@@ -33,7 +33,7 @@
 // ----- includes ------------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-#include <winlib\dialogwi.h>
+#include <winlib\DialogWindow.h>
 
 #include "config.h"
 
@@ -148,9 +148,9 @@ class CommandDialog : public ModalDialog
 {
 	FileCommand	*m_command;		// open, print ...
 
-	virtual ProcessStatus handleCreate();
-	virtual ProcessStatus handleOk();
-	virtual ProcessStatus handleCommand( int cmd );
+	ProcessStatus handleCreate() override;
+	ProcessStatus handleOk() override;
+	ProcessStatus handleCommand( int cmd ) override;
 
 	public:
 	CommandDialog( FileCommand *newCommand )

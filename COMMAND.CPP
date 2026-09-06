@@ -34,8 +34,8 @@
 // --------------------------------------------------------------------- //
 
 
-#include <winlib\stddlg.h>
-#include <winlib\ListCont.h>
+#include <winlib\StandardDialogs.h>
+#include <winlib\ListboxContainer.h>
 
 #include "command.h"
 

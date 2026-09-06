@@ -33,8 +33,8 @@
 // ----- includes ------------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-#include <winlib\dialogwi.h>
-#include <winlib\controlw.h>
+#include <winlib\DialogWindow.h>
+#include <winlib\ControlWindow.h>
 
 #include "config.h"
 /*
@@ -65,9 +65,9 @@ class GlobalConfig : public ModalDialog
 	ComboBox	debuggerCombo;
 	CheckBox	askCheckBox;
 
-	virtual ProcessStatus handleCreate();
-	virtual ProcessStatus handleOk();
-	virtual ProcessStatus handleCommand( int cmd );
+	ProcessStatus handleCreate() override;
+	ProcessStatus handleOk() override;
+	ProcessStatus handleCommand( int cmd ) override;
 
 	public:
 	void create( const BasicWindow *parent )

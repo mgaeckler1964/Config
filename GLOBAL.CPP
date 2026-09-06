@@ -39,7 +39,7 @@
 #include <gak/fmtNumber.h>
 #include <gak/numericString.h>
 
-#include <winlib/stddlg.h>
+#include <winlib/StandardDialogs.h>
 #include <winlib/regedit.h>
 #include <winlib/registry.h>
 

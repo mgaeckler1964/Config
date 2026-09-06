@@ -36,8 +36,8 @@
 // ----- includes ------------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-#include <winlib\ListCont.h>
-#include <winlib\dialogwi.h>
+#include <winlib\ListboxContainer.h>
+#include <winlib\DialogWindow.h>
 
 #include "config.h"
 
@@ -71,10 +71,10 @@ class AutorunDialog : public ModalDialog
 
 	void loadAutoRunData( bool enabled, ListboxContainer &data );
 
-	virtual ProcessStatus handleCreate();
-	virtual ProcessStatus handleOk();
-	virtual ProcessStatus handleCommand( int cmd );
-	virtual ProcessStatus handleSelectionChange( int cmd );
+	ProcessStatus handleCreate() override;
+	ProcessStatus handleOk() override;
+	ProcessStatus handleCommand( int cmd ) override;
+	ProcessStatus handleSelectionChange( int cmd ) override;
 
 	public:
 	AutorunDialog( bool publicKey ) : m_publicKey(publicKey)
