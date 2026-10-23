@@ -60,7 +60,7 @@ class NTconfiguration : public Application
 
 	public:
 	NTconfiguration() : Application( CONFIG_ICON ) {};
-	CallbackWindow	*createMainWindow( const char *cmdLine, int nCmdShow ) override;
+	CallbackWindow	*createMainWindow( const char *cmdLine, ShowWindowMode nCmdShow ) override;
 };
 
 // --------------------------------------------------------------------- //
@@ -73,7 +73,7 @@ static NTconfiguration ntConfig;
 // ----- class virtuals ------------------------------------------------ //
 // --------------------------------------------------------------------- //
 
-CallbackWindow *NTconfiguration::createMainWindow( const char * , int  )
+CallbackWindow *NTconfiguration::createMainWindow( const char * , ShowWindowMode  )
 {
 	doEnterFunction("NTconfiguration::createMainWindow");
 	ConfigDialog *mainWindow = new ConfigDialog;
