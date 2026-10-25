@@ -392,7 +392,7 @@ ProcessStatus ConfigDialog::handleCommand( int cmd )
 			if( errorCode != ERROR_SUCCESS )
 			{
 				FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, errorCode, 0, buffer, sizeof( buffer ), NULL );
-				messageBox( buffer, "Fehler", MB_ICONSTOP );
+				messageBox( buffer, "Fehler", mbiERROR );
 			}
 
 			errorCode = streams.openPrivate( StreamMRUKey, KEY_ALL_ACCESS|KEY_WOW64_64KEY );
@@ -410,7 +410,7 @@ ProcessStatus ConfigDialog::handleCommand( int cmd )
 			if( errorCode != ERROR_SUCCESS )
 			{
 				FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, errorCode, 0, buffer, sizeof( buffer ), NULL );
-				messageBox( buffer, "Fehler", MB_ICONSTOP );
+				messageBox( buffer, "Fehler", mbiERROR );
 			}
 /*v*/		break;
 		}
